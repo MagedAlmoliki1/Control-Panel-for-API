@@ -1,0 +1,79 @@
+// prisma/schema.prisma
+
+datasource db {
+  provider = "sqlite"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id            String    @id @default(uuid())
+  name          String
+  username      String    @unique
+  password      String
+  phone         String?
+  role          String    @default("SELLER") // "ADMIN" or "SELLER"
+  status        String    @default("ACTIVE") // "ACTIVE" or "INACTIVE"
+  allowedPrices String    @default("[]")    // JSON Array stored as string of price plans
+  createdAt     DateTime  @default(now())
+
+  customers     Customer[] @relation("SellerCustomers")
+  sales         Sale[]     @relation("SellerSales")
+  histories     SubscriptionHistory[] @relation("SellerHistories")
+  auditLogs     AuditLog[] @relation("UserAuditLogs")
+}
+
+model Customer {
+  id                String    @id @default(uuid())
+  name              String
+  idBase            String    // base_id sent to external API
+  username          String    @unique // subscription login username
+  sellerId          String
+  seller            User      @relation("SellerCustomers", fields: [sellerId], references: [id])
+  startSubscription DateTime
+  endSubscription   DateTime
+  status            String    @default("ACTIVE") // "ACTIVE", "EXPIRED", "SUSPENDED"
+  notes             String?
+  createdAt         DateTime  @default(now())
+
+  sales             Sale[]
+  histories         SubscriptionHistory[]
+}
+
+model Sale {
+  id            String    @id @default(uuid())
+  customerId    String
+  customer      Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  sellerId      String
+  seller        User      @relation("SellerSales", fields: [sellerId], references: [id])
+  amount        Float
+  currency      String    @default("SAR")
+  duration      String    // "2 hours", "1 day", "3 days", "1 week", "1 month", "3 months", "6 months", "1 year"
+  paymentMethod String    // "CASH", "TRANSFER", "USDT"
+  notes         String?
+  createdAt     DateTime  @default(now())
+}
+
+model SubscriptionHistory {
+  id         String   @id @default(uuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  sellerId   String
+  seller     User     @relation("SellerHistories", fields: [sellerId], references: [id])
+  action     String   // "ACTIVATE", "RENEW", "SUSPEND"
+  duration   String
+  startDate  DateTime
+  endDate    DateTime
+  createdAt  DateTime @default(now())
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation("UserAuditLogs", fields: [userId], references: [id], onDelete: Cascade)
+  actionType  String   // e.g., "LOGIN", "ADD_SELLER", "ADD_CUSTOMER", "RENEW_CUSTOMER", "SUSPEND_CUSTOMER"
+  changedData String?  // JSON serialized string
+  createdAt   DateTime @default(now())
+}

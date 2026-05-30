@@ -1,0 +1,40 @@
+{
+  "users": [
+    {
+      "username": "test_user_1",
+      "base_id": "base_100",
+      "duration": "1 month",
+      "status": "active",
+      "createdAt": "2026-05-25T18:29:44.322Z",
+      "endTime": "2026-06-25T18:29:44.322Z"
+    },
+    {
+      "username": "test_user_2",
+      "base_id": "base_101",
+      "duration": "3 days",
+      "status": "expired",
+      "createdAt": "2026-05-26T18:29:44.322Z",
+      "endTime": "2026-05-29T18:29:44.322Z"
+    }
+  ],
+  "logs": [
+    {
+      "user_id": "test_user_1",
+      "login_time": "2026-05-28T18:29:44.322Z",
+      "ip": "192.168.1.10",
+      "duration_seconds": 3600
+    },
+    {
+      "user_id": "test_user_1",
+      "login_time": "2026-05-29T18:29:44.322Z",
+      "ip": "192.168.1.15",
+      "duration_seconds": 7200
+    },
+    {
+      "user_id": "test_user_2",
+      "login_time": "2026-05-27T18:29:44.322Z",
+      "ip": "82.165.44.12",
+      "duration_seconds": 1200
+    }
+  ]
+}
