@@ -20,6 +20,7 @@ import {
   Edit,
   Trash2,
 } from 'lucide-react';
+import { useLanguage } from '@/lib/LanguageContext';
 
 interface AllowedPrice {
   duration: string;
@@ -64,27 +65,31 @@ export default function SellersManager() {
   const [editPassword, setEditPassword] = useState('');
   const [editAllowedPrices, setEditAllowedPrices] = useState<AllowedPrice[]>([]);
 
+  const { language, t } = useLanguage();
+
   // Predefined default durations (acts as initial fallback)
-  const [defaultDurations, setDefaultDurations] = useState([
-    { label: 'ساعتين', value: '2 hours', defaultPrice: 5 },
-    { label: 'يوم واحد', value: '1 day', defaultPrice: 15 },
-    { label: '3 أيام', value: '3 days', defaultPrice: 30 },
-    { label: 'أسبوع واحد', value: '1 week', defaultPrice: 60 },
-    { label: 'شهر واحد', value: '1 month', defaultPrice: 150 },
-    { label: '3 أشهر', value: '3 months', defaultPrice: 400 },
-    { label: '6 أشهر', value: '6 months', defaultPrice: 700 },
-    { label: 'سنة واحدة', value: '1 year', defaultPrice: 1200 },
-  ]);
+  const defaultDurations = [
+    { label: language === 'ar' ? 'ساعتين' : '2 Hours', value: '2 hours', defaultPrice: 5 },
+    { label: language === 'ar' ? 'يوم واحد' : '1 Day', value: '1 day', defaultPrice: 15 },
+    { label: language === 'ar' ? '3 أيام' : '3 Days', value: '3 days', defaultPrice: 30 },
+    { label: language === 'ar' ? 'أسبوع واحد' : '1 Week', value: '1 week', defaultPrice: 60 },
+    { label: language === 'ar' ? 'شهر واحد' : '1 Month', value: '1 month', defaultPrice: 150 },
+    { label: language === 'ar' ? '3 أشهر' : '3 Months', value: '3 months', defaultPrice: 400 },
+    { label: language === 'ar' ? '6 أشهر' : '6 Months', value: '6 months', defaultPrice: 700 },
+    { label: language === 'ar' ? 'سنة واحدة' : '1 Year', value: '1 year', defaultPrice: 1200 },
+  ];
+
+  const [pricePlansFromDb, setPricePlansFromDb] = useState<any[]>([]);
 
   const fetchSellers = async () => {
     setLoading(true);
     try {
       const res = await fetch('/api/sellers');
-      if (!res.ok) throw new Error('فشل تحميل بيانات الموزعين');
+      if (!res.ok) throw new Error(language === 'ar' ? 'فشل تحميل بيانات الموزعين' : 'Failed to load sellers data');
       const data = await res.json();
       setSellers(data);
     } catch (err: any) {
-      setError(err.message || 'حدث خطأ غير متوقع');
+      setError(err.message || (language === 'ar' ? 'حدث خطأ غير متوقع' : 'Unexpected error occurred'));
     } finally {
       setLoading(false);
     }
@@ -96,16 +101,11 @@ export default function SellersManager() {
       if (res.ok) {
         const data = await res.json();
         if (data.pricePlans && Array.isArray(data.pricePlans) && data.pricePlans.length > 0) {
-          const mapped = data.pricePlans.map((p: any) => ({
-            label: p.label,
-            value: p.duration,
-            defaultPrice: p.price
-          }));
-          setDefaultDurations(mapped);
+          setPricePlansFromDb(data.pricePlans);
         }
       }
     } catch (e) {
-      console.warn('Could not load dynamic price plans, using fallbacks:', e);
+      console.warn('Could not fetch price plans for SellersManager:', e);
     }
   };
 
@@ -123,40 +123,63 @@ export default function SellersManager() {
     setTimeout(() => setError(''), 4500);
   };
 
-  // 1. Add Seller Allowed Price Toggle Helper
-  const handleToggleDuration = (duration: string, defaultPrice: number, isEdit = false) => {
-    const list = isEdit ? editAllowedPrices : newAllowedPrices;
-    const setList = isEdit ? setEditAllowedPrices : setNewAllowedPrices;
+  const getActivePricePlans = () => {
+    if (pricePlansFromDb.length > 0) {
+      return pricePlansFromDb;
+    }
+    return defaultDurations;
+  };
 
-    const existing = list.find((p) => p.duration === duration);
-    if (existing) {
-      setList(list.filter((p) => p.duration !== duration));
+  const activePlans = getActivePricePlans();
+
+  // Handle Allowed price checkbox toggle in Add Seller
+  const handleAddTogglePrice = (duration: string, defaultVal: number) => {
+    const exists = newAllowedPrices.find(p => p.duration === duration);
+    if (exists) {
+      setNewAllowedPrices(newAllowedPrices.filter(p => p.duration !== duration));
     } else {
-      setList([...list, { duration, price: defaultPrice, currency: 'SAR' }]);
+      setNewAllowedPrices([...newAllowedPrices, { duration, price: defaultVal, currency: 'SAR' }]);
     }
   };
 
-  const handlePriceChange = (duration: string, price: number, isEdit = false) => {
-    const list = isEdit ? editAllowedPrices : newAllowedPrices;
-    const setList = isEdit ? setEditAllowedPrices : setNewAllowedPrices;
-
-    setList(
-      list.map((p) => (p.duration === duration ? { ...p, price } : p))
+  const handleAddPriceChange = (duration: string, value: number) => {
+    setNewAllowedPrices(
+      newAllowedPrices.map(p => (p.duration === duration ? { ...p, price: value } : p))
     );
   };
 
-  // 2. Submit Add Seller
+  // Handle Allowed price checkbox toggle in Edit Seller
+  const handleEditTogglePrice = (duration: string, defaultVal: number) => {
+    const exists = editAllowedPrices.find(p => p.duration === duration);
+    if (exists) {
+      setEditAllowedPrices(editAllowedPrices.filter(p => p.duration !== duration));
+    } else {
+      setEditAllowedPrices([...editAllowedPrices, { duration, price: defaultVal, currency: 'SAR' }]);
+    }
+  };
+
+  const handleEditPriceChange = (duration: string, value: number) => {
+    setEditAllowedPrices(
+      editAllowedPrices.map(p => (p.duration === duration ? { ...p, price: value } : p))
+    );
+  };
+
+  // Submit add seller
   const handleAddSeller = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    if (!newName || !newUsername || !newPassword) {
+      triggerError(language === 'ar' ? 'يرجى ملء جميع الحقول المطلوبة للموزع' : 'Please fill all required seller fields');
+      return;
+    }
 
+    setLoading(true);
     try {
       const res = await fetch('/api/sellers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: newName,
-          username: newUsername,
+          username: newUsername.trim().toLowerCase(),
           password: newPassword,
           phone: newPhone,
           allowedPrices: newAllowedPrices,
@@ -164,10 +187,11 @@ export default function SellersManager() {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'فشل إضافة الموزع');
+      if (!res.ok) throw new Error(data.error || (language === 'ar' ? 'فشل إضافة الموزع' : 'Failed to add seller'));
 
       setAddModalOpen(false);
-      triggerSuccess('تمت إضافة الموزع وتعيين تسعيرة الباقات المخصصة بنجاح!');
+      triggerSuccess(language === 'ar' ? 'تمت إضافة الموزع بنجاح وتخصيص الباقات!' : 'Seller added successfully with allocated plans!');
+      
       // Reset
       setNewName('');
       setNewUsername('');
@@ -176,13 +200,50 @@ export default function SellersManager() {
       setNewAllowedPrices([]);
       fetchSellers();
     } catch (err: any) {
-      triggerError(err.message || 'فشل التسجيل');
+      triggerError(err.message || (language === 'ar' ? 'فشل الحفظ' : 'Failed to save'));
     } finally {
       setLoading(false);
     }
   };
 
-  // 3. Quick Toggle Seller Status (Enable/Disable)
+  // Submit edit seller
+  const handleEditSeller = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedSeller) return;
+
+    setLoading(true);
+    try {
+      const payload: any = {
+        name: editName,
+        phone: editPhone,
+        status: editStatus,
+        allowedPrices: editAllowedPrices,
+      };
+      if (editPassword) {
+        payload.password = editPassword;
+      }
+
+      const res = await fetch(`/api/sellers/${selectedSeller.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || (language === 'ar' ? 'فشل تعديل بيانات الموزع' : 'Failed to update seller data'));
+
+      setEditModalOpen(false);
+      triggerSuccess(language === 'ar' ? `تم تعديل بيانات الموزع (${editName}) بنجاح` : `Seller (${editName}) updated successfully`);
+      setEditPassword('');
+      fetchSellers();
+    } catch (err: any) {
+      triggerError(err.message || (language === 'ar' ? 'فشل الحفظ' : 'Failed to save'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Toggle seller status
   const handleToggleStatus = async (seller: Seller) => {
     setLoading(true);
     try {
@@ -190,84 +251,36 @@ export default function SellersManager() {
         method: 'POST',
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'فشل تعديل الحالة');
+      if (!res.ok) throw new Error(data.error || (language === 'ar' ? 'فشل تغيير حالة الموزع' : 'Failed to toggle seller status'));
 
-      triggerSuccess(`تمت ${data.status === 'ACTIVE' ? 'إعادة تفعيل' : 'تعطيل'} حساب الموزع (${seller.name}) بنجاح.`);
+      triggerSuccess(
+        language === 'ar' 
+          ? `تم تغيير حالة الموزع (${seller.name}) بنجاح إلى: ${data.status === 'ACTIVE' ? 'نشط' : 'موقف'}`
+          : `Seller (${seller.name}) status toggled successfully to: ${data.status === 'ACTIVE' ? 'Active' : 'Disabled'}`
+      );
       fetchSellers();
     } catch (err: any) {
-      triggerError(err.message || 'فشل التعديل');
+      triggerError(err.message || (language === 'ar' ? 'فشل التغيير' : 'Failed to toggle status'));
     } finally {
       setLoading(false);
     }
   };
 
-  // 4. Submit Edit Seller
-  const handleEditSeller = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedSeller) return;
-    setLoading(true);
-
-    try {
-      const res = await fetch(`/api/sellers/${selectedSeller.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: editName,
-          phone: editPhone,
-          status: editStatus,
-          allowedPrices: editAllowedPrices,
-          password: editPassword,
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'فشل تعديل البيانات');
-
-      setEditModalOpen(false);
-      triggerSuccess('تم تعديل بيانات الموزع وتسعيرات الصلاحيات بنجاح.');
-      setEditPassword('');
-      fetchSellers();
-    } catch (err: any) {
-      triggerError(err.message || 'فشل التعديل');
-    } finally {
-      setLoading(false);
-    }
+  const openEditModal = (seller: Seller) => {
+    setSelectedSeller(seller);
+    setEditName(seller.name);
+    setEditPhone(seller.phone || '');
+    setEditStatus(seller.status === 'ACTIVE' ? 'ACTIVE' : 'INACTIVE');
+    setEditAllowedPrices(seller.allowedPrices || []);
+    setEditModalOpen(true);
   };
 
-  // 5. Delete Seller permanently
-  const handleDeleteSeller = async (seller: Seller) => {
-    if (!confirm(`تحذير خطير: هل أنت متأكد من رغبتك في حذف حساب الموزع (${seller.name}) نهائياً؟ سيؤدي هذا لحذف كل سجلات الدفع المرتبطة به.`)) {
-      return;
-    }
-    setLoading(true);
-
-    try {
-      const res = await fetch(`/api/sellers/${seller.id}`, {
-        method: 'DELETE',
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'فشل الحذف');
-      }
-
-      triggerSuccess('تم حذف الموزع نهائياً من النظام.');
-      fetchSellers();
-    } catch (err: any) {
-      triggerError(err.message || 'فشل الحذف');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Total Sellers Metrics
-  const totalSellersCount = sellers.length;
-  const activeSellersCount = sellers.filter((s) => s.status === 'ACTIVE').length;
-  const totalSellerSalesSum = sellers.reduce((acc, curr) => acc + curr.totalSales, 0);
+  const currencySuffix = language === 'ar' ? ' ر.س' : ' SAR';
+  const formatNum = (val: number) => val.toLocaleString(language === 'ar' ? 'ar-SA' : 'en-US');
 
   return (
-    <div className="space-y-6">
-      {/* Toasts */}
+    <div className={`space-y-6 ${language === 'ar' ? 'text-right' : 'text-left'}`}>
+      {/* Toast Alert elements */}
       {success && (
         <div className="fixed top-5 left-5 z-50 bg-emerald-500 text-white font-semibold py-3 px-6 rounded-2xl shadow-xl flex items-center gap-3 animate-slide-in">
           <CheckCircle className="w-5 h-5" />
@@ -281,159 +294,136 @@ export default function SellersManager() {
         </div>
       )}
 
-      {/* Header bar */}
+      {/* Header bar section */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-slate-100">إدارة حسابات الموزعين المعتمدين</h2>
-          <p className="text-slate-400 text-xs mt-0.5">تسجيل الموزعين الفرعيين، تحديد قوائم الأسعار والتحكم بالصلاحيات</p>
+          <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2.5">
+            <div className="p-2 bg-indigo-500/10 rounded-xl border border-indigo-500/20 text-indigo-400">
+              <UserCheck className="w-5 h-5" />
+            </div>
+            <span>{t('sellersTitle')}</span>
+          </h2>
+          <p className="text-slate-400 text-xs mt-1">
+            {language === 'ar' 
+              ? 'إنشاء وإدارة حسابات الموزعين وتخصيص باقات البيع المسموحة والحدود الدنيا لأسعارهم' 
+              : 'Create and manage distributor accounts, assign allowed plans, and limit minimum prices'}
+          </p>
         </div>
         <button
           onClick={() => setAddModalOpen(true)}
-          className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold py-3 px-5 rounded-xl transition duration-200 glow-primary border border-indigo-500/30 flex items-center gap-2 cursor-pointer"
+          className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold py-3 px-5 rounded-xl transition duration-200 glow-primary border border-indigo-500/20 flex items-center gap-2 cursor-pointer"
         >
           <UserPlus className="w-4.5 h-4.5" />
-          <span>تسجيل موزع جديد</span>
+          <span>{t('addSellerBtn')}</span>
         </button>
       </div>
 
-      {/* Sellers Metrics overview */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-        {/* Metric 1: Total Sellers */}
-        <div className="glass-panel p-5 rounded-2xl border-slate-800/80">
-          <span className="text-slate-400 text-xs font-semibold">إجمالي الموزعين</span>
-          <h3 className="text-2xl font-bold text-slate-100 mt-2">{totalSellersCount}</h3>
-          <span className="text-[10px] text-slate-500 mt-1.5 block">إجمالي الحسابات المسجلة</span>
+      {/* Sellers Grid Cards */}
+      {loading && sellers.length === 0 ? (
+        <div className="glass-panel p-16 text-center text-slate-500 text-xs rounded-2xl border-slate-800">
+          <span className="w-6 h-6 border-2 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin inline-block mb-3" />
+          <p>{language === 'ar' ? 'جاري جلب تفاصيل وبيانات الموزعين الأكفاء...' : 'Fetching distributor records and data...'}</p>
         </div>
-
-        {/* Metric 2: Active Sellers */}
-        <div className="glass-panel p-5 rounded-2xl border-slate-800/80">
-          <span className="text-slate-400 text-xs font-semibold">الموزعين النشطين</span>
-          <h3 className="text-2xl font-bold text-slate-100 mt-2 text-emerald-400">{activeSellersCount}</h3>
-          <span className="text-[10px] text-emerald-400/90 mt-1.5 block">حسابات مسموح لها بالتفعيل والبيع</span>
+      ) : sellers.length === 0 ? (
+        <div className="p-16 text-center text-slate-500 text-xs border border-dashed border-slate-800 rounded-2xl">
+          <User className="w-8 h-8 opacity-25 mb-2 mx-auto text-slate-400" />
+          <p>{t('noSellersFound')}</p>
         </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {sellers.map((seller) => (
+            <div key={seller.id} className="glass-panel rounded-2xl border-slate-800/80 overflow-hidden flex flex-col justify-between">
+              {/* Card Header info */}
+              <div className="p-6 border-b border-slate-900/60 bg-slate-900/10 flex items-start justify-between">
+                <div>
+                  <h3 className="font-bold text-slate-100 text-sm flex items-center gap-2">
+                    {seller.name}
+                    <span className={`inline-block w-2.5 h-2.5 rounded-full ${
+                      seller.status === 'ACTIVE' ? 'bg-emerald-500' : 'bg-red-500'
+                    }`} />
+                  </h3>
+                  <p className="text-[10px] text-slate-500 mt-1 font-mono">@{seller.username}</p>
+                  {seller.phone && (
+                    <p className="text-[10px] text-slate-400 mt-1 flex items-center gap-1">
+                      <Phone className="w-3 h-3 text-slate-500" />
+                      <span>{seller.phone}</span>
+                    </p>
+                  )}
+                </div>
 
-        {/* Metric 3: Total Sales Revenue */}
-        <div className="glass-panel p-5 rounded-2xl border-slate-800/80">
-          <span className="text-slate-400 text-xs font-semibold">مجموع مبيعات الموزعين</span>
-          <h3 className="text-2xl font-bold text-indigo-400 mt-2">
-            {totalSellerSalesSum.toLocaleString('ar-SA')} <span className="text-xs font-normal text-slate-400">ر.س</span>
-          </h3>
-          <span className="text-[10px] text-indigo-400/90 mt-1.5 block">إجمالي الأرباح المستلمة من الفرعيين</span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => openEditModal(seller)}
+                    className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-350 border border-slate-700/50 rounded-lg transition cursor-pointer"
+                    title={language === 'ar' ? 'تعديل البيانات والباقات' : 'Edit Details & Packages'}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => handleToggleStatus(seller)}
+                    className={`p-2 rounded-lg border transition cursor-pointer ${
+                      seller.status === 'ACTIVE' 
+                        ? 'bg-amber-500/5 text-amber-500 border-amber-500/20 hover:bg-amber-500/10' 
+                        : 'bg-emerald-500/5 text-emerald-500 border-emerald-500/20 hover:bg-emerald-500/10'
+                    }`}
+                    title={t('statusActionToggle')}
+                  >
+                    {seller.status === 'ACTIVE' ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Card Body stats */}
+              <div className="p-6 space-y-4 flex-1">
+                {/* Stats cards inside */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-3 bg-[#0a0f1d] border border-slate-900 rounded-xl">
+                    <span className="text-slate-500 text-[10px] block">{language === 'ar' ? 'العملاء النشطون' : 'Active Customers'}</span>
+                    <strong className="text-slate-200 text-sm mt-1 block">{formatNum(seller.activeCustomersCount)} {language === 'ar' ? 'عميل' : 'clients'}</strong>
+                  </div>
+                  <div className="p-3 bg-[#0a0f1d] border border-slate-900 rounded-xl">
+                    <span className="text-slate-500 text-[10px] block">{language === 'ar' ? 'حجم المبيعات' : 'Sales Volume'}</span>
+                    <strong className="text-emerald-400 text-sm mt-1 block font-bold">{formatNum(seller.totalSales)}{currencySuffix}</strong>
+                  </div>
+                </div>
+
+                {/* Allowed prices */}
+                <div>
+                  <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-2.5">
+                    {language === 'ar' ? 'الباقات المتاح بيعها والحد الأدنى للأسعار' : 'Allowed Packages & Min Prices'}
+                  </h4>
+                  {seller.allowedPrices.length === 0 ? (
+                    <p className="text-[10px] text-red-400 bg-red-500/5 border border-red-500/10 p-2 rounded-lg">
+                      {language === 'ar' ? '⚠️ هذا الموزع لا يملك صلاحية لبيع أي باقة حالياً.' : '⚠️ This seller has no authorization to sell any plan currently.'}
+                    </p>
+                  ) : (
+                    <div className="flex flex-wrap gap-1.5 max-h-[85px] overflow-y-auto pr-1">
+                      {seller.allowedPrices.map((plan, idx) => (
+                        <span key={idx} className="text-[10px] font-medium bg-[#121829] text-indigo-400 border border-slate-800/80 px-2.5 py-1 rounded-lg">
+                          {plan.duration}: <strong className="text-emerald-400 font-bold">{plan.price}</strong>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
-      </div>
+      )}
 
-      {/* Sellers Table grid */}
-      <div className="glass-panel rounded-2xl border-slate-800/80 overflow-hidden">
-        {loading && sellers.length === 0 ? (
-          <div className="p-12 text-center text-slate-500 text-xs">
-            <span className="w-6 h-6 border-2 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin inline-block mb-3" />
-            <p>جاري تحميل قائمة الموزعين والأسعار المسموحة...</p>
-          </div>
-        ) : sellers.length === 0 ? (
-          <div className="p-16 text-center text-slate-500 text-xs m-4 border border-dashed border-slate-800 rounded-2xl">
-            لم يتم تسجيل أي موزع فرعي بعد. يمكنك إضافة أول موزع الآن!
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-right border-collapse text-xs">
-              <thead>
-                <tr className="border-b border-slate-800 bg-slate-900/10 text-slate-400">
-                  <th className="p-4 font-semibold">اسم الموزع</th>
-                  <th className="p-4 font-semibold">رقم الهاتف</th>
-                  <th className="p-4 font-semibold text-center">العملاء النشطين</th>
-                  <th className="p-4 font-semibold text-center">إجمالي المبيعات</th>
-                  <th className="p-4 font-semibold">باقات الصلاحية المصرحة</th>
-                  <th className="p-4 font-semibold text-center">حالة الحساب</th>
-                  <th className="p-4 font-semibold text-left">العمليات</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sellers.map((s) => (
-                  <tr key={s.id} className="border-b border-slate-900/40 hover:bg-slate-800/10 transition">
-                    <td className="p-4 font-medium text-slate-100">
-                      <div className="font-semibold text-sm">{s.name}</div>
-                      <div className="text-[10px] text-slate-500 mt-1">@{s.username}</div>
-                    </td>
-                    <td className="p-4 text-slate-400">{s.phone || '-'}</td>
-                    <td className="p-4 text-center font-bold text-slate-300">
-                      {s.activeCustomersCount}
-                    </td>
-                    <td className="p-4 text-center text-emerald-400 font-bold">
-                      {s.totalSales.toLocaleString('ar-SA')} ر.س
-                    </td>
-                    <td className="p-4 max-w-[200px]">
-                      <div className="flex flex-wrap gap-1">
-                        {s.allowedPrices.length === 0 ? (
-                          <span className="text-[9px] text-red-400 bg-red-500/10 border border-red-500/25 px-1.5 py-0.5 rounded">
-                            لا يوجد صلاحيات بيع
-                          </span>
-                        ) : (
-                          s.allowedPrices.map((p, idx) => (
-                            <span key={idx} className="bg-[#121829] text-indigo-400 border border-slate-800 px-1.5 py-0.5 rounded text-[9px]">
-                              {p.duration}: {p.price} ر.س
-                            </span>
-                          ))
-                        )}
-                      </div>
-                    </td>
-                    <td className="p-4 text-center">
-                      <button
-                        onClick={() => handleToggleStatus(s)}
-                        className={`inline-flex items-center gap-1.5 py-1 px-3 rounded-full font-bold border text-[10px] cursor-pointer transition ${
-                          s.status === 'ACTIVE'
-                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25'
-                            : 'bg-red-500/10 text-red-400 border-red-500/25 hover:bg-red-500/20'
-                        }`}
-                      >
-                        {s.status === 'ACTIVE' ? 'نشط ومفعل' : 'معطل ومحظور'}
-                      </button>
-                    </td>
-                    <td className="p-4 text-left">
-                      <div className="inline-flex items-center gap-2" dir="ltr">
-                        {/* Edit details popup trigger */}
-                        <button
-                          onClick={() => {
-                            setSelectedSeller(s);
-                            setEditName(s.name);
-                            setEditPhone(s.phone || '');
-                            setEditStatus(s.status);
-                            setEditAllowedPrices(s.allowedPrices);
-                            setEditModalOpen(true);
-                          }}
-                          className="p-2 bg-[#121829] hover:bg-[#182035] text-slate-400 hover:text-indigo-400 border border-slate-800 rounded-lg transition cursor-pointer"
-                          title="تعديل التسعيرة والصلاحيات"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        
-                        {/* Delete permanently */}
-                        <button
-                          onClick={() => handleDeleteSeller(s)}
-                          className="p-2 bg-red-500/5 hover:bg-red-500/10 text-red-400 border border-red-500/20 rounded-lg transition cursor-pointer"
-                          title="حذف الموزع"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {/* MODAL 1: ADD SELLER */}
+      {/* MODAL: ADD SELLER */}
       {addModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setAddModalOpen(false)} />
 
-          <div className="w-full max-w-2xl bg-[#0d1322] border border-slate-800 rounded-2xl p-6 md:p-8 z-10 overflow-y-auto max-h-[90vh] glow-primary text-right">
-            <div className="flex items-center justify-between border-b border-slate-900 pb-4 mb-6">
+          <div className={`w-full max-w-2xl bg-[#0d1322] border border-slate-800 rounded-2xl p-6 z-10 glow-primary ${
+            language === 'ar' ? 'text-right' : 'text-left'
+          }`}>
+            <div className="flex items-center justify-between border-b border-slate-900 pb-4 mb-5">
               <h3 className="font-bold text-slate-100 text-lg flex items-center gap-2">
                 <UserPlus className="w-5 h-5 text-indigo-400" />
-                تسجيل موزع فرعي جديد وتعيين صلاحياته
+                {t('dialogAddSeller')}
               </h3>
               <button onClick={() => setAddModalOpen(false)} className="text-slate-500 hover:text-slate-300 cursor-pointer">
                 <X className="w-6 h-6" />
@@ -442,94 +432,119 @@ export default function SellersManager() {
 
             <form onSubmit={handleAddSeller} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Full name */}
+                {/* Name */}
                 <div>
-                  <label className="block text-slate-300 text-xs font-semibold mb-2">الاسم الكامل للموزع</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="مثال: أحمد صالح العتيبي"
-                    className="w-full bg-[#070b13] border border-slate-800 rounded-xl py-3 px-4 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 text-right"
-                    value={newName}
-                    onChange={(e) => setNewName(e.target.value)}
-                  />
+                  <label className="block text-slate-350 text-xs font-medium mb-1.5">{t('sellerName')} *</label>
+                  <div className="relative">
+                    <User className={`absolute inset-y-0 ${language === 'ar' ? 'right-3' : 'left-3'} w-4 h-4 top-1/2 -translate-y-1/2 text-slate-500`} />
+                    <input
+                      type="text"
+                      required
+                      placeholder={language === 'ar' ? 'الاسم الكامل للموزع' : 'Distributor full name'}
+                      className={`w-full bg-[#070b13] border border-slate-850 rounded-xl py-2.5 ${
+                        language === 'ar' ? 'pr-9 pl-4' : 'pl-9 pr-4'
+                      } text-xs text-slate-200 focus:outline-none focus:border-indigo-500`}
+                      value={newName}
+                      onChange={(e) => setNewName(e.target.value)}
+                    />
+                  </div>
                 </div>
 
                 {/* Username */}
                 <div>
-                  <label className="block text-slate-300 text-xs font-semibold mb-2">اسم المستخدم للدخول (بالإنكليزية)</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="مثال: ahmad_seller"
-                    className="w-full bg-[#070b13] border border-slate-800 rounded-xl py-3 px-4 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 text-right text-ltr"
-                    value={newUsername}
-                    onChange={(e) => setNewUsername(e.target.value)}
-                  />
+                  <label className="block text-slate-355 text-xs font-medium mb-1.5">{t('usernameLabel')} *</label>
+                  <div className="relative">
+                    <User className={`absolute inset-y-0 ${language === 'ar' ? 'right-3' : 'left-3'} w-4 h-4 top-1/2 -translate-y-1/2 text-slate-500`} />
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. seller123"
+                      className={`w-full bg-[#070b13] border border-slate-850 rounded-xl py-2.5 ${
+                        language === 'ar' ? 'pr-9 pl-4 text-ltr text-right' : 'pl-9 pr-4 text-ltr text-left'
+                      } text-xs text-slate-200 focus:outline-none focus:border-indigo-500`}
+                      value={newUsername}
+                      onChange={(e) => setNewUsername(e.target.value)}
+                    />
+                  </div>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Password */}
                 <div>
-                  <label className="block text-slate-300 text-xs font-semibold mb-2">كلمة المرور للدخول</label>
-                  <input
-                    type="password"
-                    required
-                    placeholder="أدخل كلمة مرور قوية"
-                    className="w-full bg-[#070b13] border border-slate-800 rounded-xl py-3 px-4 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 text-right"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                  />
+                  <label className="block text-slate-350 text-xs font-medium mb-1.5">{t('passwordLabel')} *</label>
+                  <div className="relative">
+                    <Lock className={`absolute inset-y-0 ${language === 'ar' ? 'right-3' : 'left-3'} w-4 h-4 top-1/2 -translate-y-1/2 text-slate-500`} />
+                    <input
+                      type="password"
+                      required
+                      placeholder={language === 'ar' ? 'كلمة مرور الدخول' : 'Access password'}
+                      className={`w-full bg-[#070b13] border border-slate-855 rounded-xl py-2.5 ${
+                        language === 'ar' ? 'pr-9 pl-4' : 'pl-9 pr-4'
+                      } text-xs text-slate-200 focus:outline-none focus:border-indigo-500`}
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                    />
+                  </div>
                 </div>
 
                 {/* Phone */}
                 <div>
-                  <label className="block text-slate-300 text-xs font-semibold mb-2">رقم الهاتف (اختياري)</label>
-                  <input
-                    type="text"
-                    placeholder="مثال: +966500000000"
-                    className="w-full bg-[#070b13] border border-slate-800 rounded-xl py-3 px-4 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 text-right text-ltr"
-                    value={newPhone}
-                    onChange={(e) => setNewPhone(e.target.value)}
-                  />
+                  <label className="block text-slate-350 text-xs font-medium mb-1.5">{t('sellerPhone')}</label>
+                  <div className="relative">
+                    <Phone className={`absolute inset-y-0 ${language === 'ar' ? 'right-3' : 'left-3'} w-4 h-4 top-1/2 -translate-y-1/2 text-slate-500`} />
+                    <input
+                      type="text"
+                      placeholder="e.g. +966500000000"
+                      className={`w-full bg-[#070b13] border border-slate-850 rounded-xl py-2.5 ${
+                        language === 'ar' ? 'pr-9 pl-4 text-ltr text-right' : 'pl-9 pr-4 text-ltr text-left'
+                      } text-xs text-slate-200 focus:outline-none focus:border-indigo-500`}
+                      value={newPhone}
+                      onChange={(e) => setNewPhone(e.target.value)}
+                    />
+                  </div>
                 </div>
               </div>
 
-              {/* Price plan checklist manager */}
-              <div className="border-t border-slate-900 pt-4 mt-6">
-                <h4 className="font-semibold text-slate-200 text-sm mb-3">تخصيص الباقات المسموحة وأدنى سعر بيع (ر.س)</h4>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[220px] overflow-y-auto pr-1">
-                  {defaultDurations.map((d) => {
-                    const isSelected = newAllowedPrices.some((p) => p.duration === d.value);
-                    const activePrice = newAllowedPrices.find((p) => p.duration === d.value)?.price || d.defaultPrice;
+              {/* Set Allowed Prices and Plans */}
+              <div className="pt-2 border-t border-slate-900">
+                <label className="block text-slate-300 text-xs font-semibold mb-3">
+                  {language === 'ar' ? 'تحديد باقات البيع المصرحة وتعديل أسعارها الدنيا (اختياري)' : 'Authorized plans & custom min prices (Optional)'}
+                </label>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[200px] overflow-y-auto pr-1">
+                  {activePlans.map((plan: any) => {
+                    const priceItem = newAllowedPrices.find(p => p.duration === plan.duration);
+                    const isChecked = !!priceItem;
                     return (
                       <div
-                        key={d.value}
-                        className={`p-3 bg-[#070b13] border rounded-xl flex items-center justify-between transition ${
-                          isSelected ? 'border-indigo-500/40 bg-indigo-500/5' : 'border-slate-850'
+                        key={plan.duration}
+                        className={`p-3 rounded-xl border flex items-center justify-between transition-colors ${
+                          isChecked 
+                            ? 'bg-indigo-500/10 border-indigo-500/40 text-slate-100' 
+                            : 'bg-[#070b13] border-slate-850 text-slate-400 hover:border-slate-800'
                         }`}
                       >
-                        <label className="flex items-center gap-2.5 cursor-pointer select-none text-slate-300">
+                        <label className="flex items-center gap-2.5 cursor-pointer text-xs font-medium">
                           <input
                             type="checkbox"
-                            className="accent-indigo-500"
-                            checked={isSelected}
-                            onChange={() => handleToggleDuration(d.value, d.defaultPrice)}
+                            className="accent-indigo-500 cursor-pointer"
+                            checked={isChecked}
+                            onChange={() => handleAddTogglePrice(plan.duration, plan.price || plan.defaultPrice)}
                           />
-                          <span className="text-xs font-semibold">{d.label} ({d.value})</span>
+                          <span>{plan.label || plan.duration}</span>
                         </label>
-                        {isSelected && (
-                          <div className="flex items-center gap-1.5 w-24">
+
+                        {isChecked && (
+                          <div className="flex items-center gap-1.5 max-w-[100px]">
                             <input
                               type="number"
-                              min={0}
-                              className="w-full bg-[#0d1322] border border-slate-800 rounded py-1 px-2 text-[11px] text-center text-emerald-400 font-bold"
-                              value={activePrice}
-                              onChange={(e) => handlePriceChange(d.value, parseFloat(e.target.value) || 0)}
+                              min={1}
+                              className="w-full bg-[#0d1322] border border-slate-800 rounded-lg py-1 px-2 text-[11px] font-bold text-center focus:outline-none focus:border-indigo-500"
+                              value={priceItem.price}
+                              onChange={(e) => handleAddPriceChange(plan.duration, parseFloat(e.target.value) || 0)}
                             />
-                            <span className="text-[10px] text-slate-500">ر.س</span>
+                            <span className="text-[10px] text-slate-500">SAR</span>
                           </div>
                         )}
                       </div>
@@ -538,21 +553,22 @@ export default function SellersManager() {
                 </div>
               </div>
 
-              <div className="pt-6 border-t border-slate-900 flex items-center justify-end gap-3" dir="ltr">
+              <div className={`pt-4 border-t border-slate-900 flex items-center justify-end gap-3 ${
+                language === 'ar' ? 'flex-row' : 'flex-row-reverse'
+              }`}>
                 <button
                   type="button"
                   onClick={() => setAddModalOpen(false)}
                   className="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs py-2.5 px-4 rounded-xl cursor-pointer"
                 >
-                  إلغاء
+                  {t('cancel')}
                 </button>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold py-2.5 px-5 rounded-xl transition cursor-pointer flex items-center gap-2"
+                  className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold py-2.5 px-5 rounded-xl transition cursor-pointer"
                 >
-                  <CheckCircle className="w-4 h-4" />
-                  <span>تأكيد وتسجيل حساب الموزع</span>
+                  {t('saveSeller')}
                 </button>
               </div>
             </form>
@@ -560,16 +576,18 @@ export default function SellersManager() {
         </div>
       )}
 
-      {/* MODAL 2: EDIT SELLER & PRICES */}
+      {/* MODAL: EDIT SELLER */}
       {editModalOpen && selectedSeller && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setEditModalOpen(false)} />
 
-          <div className="w-full max-w-2xl bg-[#0d1322] border border-slate-800 rounded-2xl p-6 md:p-8 z-10 overflow-y-auto max-h-[90vh] glow-primary text-right">
-            <div className="flex items-center justify-between border-b border-slate-900 pb-4 mb-6">
+          <div className={`w-full max-w-2xl bg-[#0d1322] border border-slate-800 rounded-2xl p-6 z-10 glow-primary ${
+            language === 'ar' ? 'text-right' : 'text-left'
+          }`}>
+            <div className="flex items-center justify-between border-b border-slate-900 pb-4 mb-5">
               <h3 className="font-bold text-slate-100 text-lg flex items-center gap-2">
                 <Settings className="w-5 h-5 text-indigo-400" />
-                تعديل صلاحيات وتسعيرة الموزع: {selectedSeller.name}
+                {language === 'ar' ? `تعديل صلاحيات وحساب: ${selectedSeller.name}` : `Edit settings & access: ${selectedSeller.name}`}
               </h3>
               <button onClick={() => setEditModalOpen(false)} className="text-slate-500 hover:text-slate-300 cursor-pointer">
                 <X className="w-6 h-6" />
@@ -578,91 +596,115 @@ export default function SellersManager() {
 
             <form onSubmit={handleEditSeller} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Full name */}
+                {/* Edit Name */}
                 <div>
-                  <label className="block text-slate-300 text-xs font-semibold mb-2">اسم الموزع الكامل</label>
-                  <input
-                    type="text"
-                    required
-                    className="w-full bg-[#070b13] border border-slate-800 rounded-xl py-3 px-4 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 text-right"
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
-                  />
+                  <label className="block text-slate-350 text-xs font-medium mb-1.5">{t('sellerName')} *</label>
+                  <div className="relative">
+                    <User className={`absolute inset-y-0 ${language === 'ar' ? 'right-3' : 'left-3'} w-4 h-4 top-1/2 -translate-y-1/2 text-slate-500`} />
+                    <input
+                      type="text"
+                      required
+                      className={`w-full bg-[#070b13] border border-slate-850 rounded-xl py-2.5 ${
+                        language === 'ar' ? 'pr-9 pl-4' : 'pl-9 pr-4'
+                      } text-xs text-slate-200 focus:outline-none focus:border-indigo-500`}
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                    />
+                  </div>
                 </div>
 
-                {/* Phone */}
+                {/* Edit Phone */}
                 <div>
-                  <label className="block text-slate-300 text-xs font-semibold mb-2">رقم الهاتف</label>
-                  <input
-                    type="text"
-                    className="w-full bg-[#070b13] border border-slate-800 rounded-xl py-3 px-4 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 text-right text-ltr"
-                    value={editPhone}
-                    onChange={(e) => setEditPhone(e.target.value)}
-                  />
+                  <label className="block text-slate-350 text-xs font-medium mb-1.5">{t('sellerPhone')}</label>
+                  <div className="relative">
+                    <Phone className={`absolute inset-y-0 ${language === 'ar' ? 'right-3' : 'left-3'} w-4 h-4 top-1/2 -translate-y-1/2 text-slate-500`} />
+                    <input
+                      type="text"
+                      className={`w-full bg-[#070b13] border border-slate-850 rounded-xl py-2.5 ${
+                        language === 'ar' ? 'pr-9 pl-4 text-ltr text-right' : 'pl-9 pr-4 text-ltr text-left'
+                      } text-xs text-slate-200 focus:outline-none focus:border-indigo-500`}
+                      value={editPhone}
+                      onChange={(e) => setEditPhone(e.target.value)}
+                    />
+                  </div>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Password reset optional */}
+                {/* Reset Password */}
                 <div>
-                  <label className="block text-slate-300 text-xs font-semibold mb-2">تغيير كلمة المرور (اختياري)</label>
-                  <input
-                    type="password"
-                    placeholder="اتركه فارغاً لعدم التغيير"
-                    className="w-full bg-[#070b13] border border-slate-800 rounded-xl py-3 px-4 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 text-right"
-                    value={editPassword}
-                    onChange={(e) => setEditPassword(e.target.value)}
-                  />
+                  <label className="block text-slate-300 text-xs font-medium mb-1.5">
+                    {language === 'ar' ? 'تغيير كلمة المرور (اتركه فارغاً لعدم التعديل)' : 'Change password (leave blank to keep current)'}
+                  </label>
+                  <div className="relative">
+                    <Lock className={`absolute inset-y-0 ${language === 'ar' ? 'right-3' : 'left-3'} w-4 h-4 top-1/2 -translate-y-1/2 text-slate-500`} />
+                    <input
+                      type="password"
+                      placeholder={language === 'ar' ? 'كلمة مرور جديدة' : 'New password'}
+                      className={`w-full bg-[#070b13] border border-slate-855 rounded-xl py-2.5 ${
+                        language === 'ar' ? 'pr-9 pl-4' : 'pl-9 pr-4'
+                      } text-xs text-slate-200 focus:outline-none focus:border-indigo-500`}
+                      value={editPassword}
+                      onChange={(e) => setEditPassword(e.target.value)}
+                    />
+                  </div>
                 </div>
 
-                {/* Status */}
+                {/* Edit status */}
                 <div>
-                  <label className="block text-slate-300 text-xs font-semibold mb-2">حالة حساب الموزع</label>
+                  <label className="block text-slate-300 text-xs font-medium mb-1.5">{t('statusText')}</label>
                   <select
-                    className="w-full bg-[#070b13] border border-slate-800 rounded-xl py-3 px-4 text-xs text-slate-300 focus:outline-none focus:border-indigo-500 text-right cursor-pointer"
+                    className={`w-full bg-[#070b13] border border-slate-800 rounded-xl py-2.5 px-4 text-xs text-slate-350 focus:outline-none focus:border-indigo-500 cursor-pointer ${
+                      language === 'ar' ? 'text-right' : 'text-left'
+                    }`}
                     value={editStatus}
                     onChange={(e) => setEditStatus(e.target.value as 'ACTIVE' | 'INACTIVE')}
                   >
-                    <option value="ACTIVE">نشط ومفعل</option>
-                    <option value="INACTIVE">معطل ومحظور</option>
+                    <option value="ACTIVE">{t('statusActive')}</option>
+                    <option value="INACTIVE">{t('statusDisabled')}</option>
                   </select>
                 </div>
               </div>
 
-              {/* Price plan checklist manager */}
-              <div className="border-t border-slate-900 pt-4 mt-6">
-                <h4 className="font-semibold text-slate-200 text-sm mb-3">تخصيص الباقات المسموحة وأدنى سعر بيع (ر.س)</h4>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[220px] overflow-y-auto pr-1">
-                  {defaultDurations.map((d) => {
-                    const isSelected = editAllowedPrices.some((p) => p.duration === d.value);
-                    const activePrice = editAllowedPrices.find((p) => p.duration === d.value)?.price || d.defaultPrice;
+              {/* Set Allowed Prices and Plans */}
+              <div className="pt-2 border-t border-slate-900">
+                <label className="block text-slate-300 text-xs font-semibold mb-3">
+                  {language === 'ar' ? 'تعديل الباقات المتاح بيعها والأسعار الخاصة' : 'Edit Authorized Plans & Custom Prices'}
+                </label>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[200px] overflow-y-auto pr-1">
+                  {activePlans.map((plan: any) => {
+                    const priceItem = editAllowedPrices.find(p => p.duration === plan.duration);
+                    const isChecked = !!priceItem;
                     return (
                       <div
-                        key={d.value}
-                        className={`p-3 bg-[#070b13] border rounded-xl flex items-center justify-between transition ${
-                          isSelected ? 'border-indigo-500/40 bg-indigo-500/5' : 'border-slate-850'
+                        key={plan.duration}
+                        className={`p-3 rounded-xl border flex items-center justify-between transition-colors ${
+                          isChecked 
+                            ? 'bg-indigo-500/10 border-indigo-500/40 text-slate-100' 
+                            : 'bg-[#070b13] border-slate-850 text-slate-400 hover:border-slate-800'
                         }`}
                       >
-                        <label className="flex items-center gap-2.5 cursor-pointer select-none text-slate-300">
+                        <label className="flex items-center gap-2.5 cursor-pointer text-xs font-medium">
                           <input
                             type="checkbox"
-                            className="accent-indigo-500"
-                            checked={isSelected}
-                            onChange={() => handleToggleDuration(d.value, d.defaultPrice, true)}
+                            className="accent-indigo-500 cursor-pointer"
+                            checked={isChecked}
+                            onChange={() => handleEditTogglePrice(plan.duration, plan.price || plan.defaultPrice)}
                           />
-                          <span className="text-xs font-semibold">{d.label} ({d.value})</span>
+                          <span>{plan.label || plan.duration}</span>
                         </label>
-                        {isSelected && (
-                          <div className="flex items-center gap-1.5 w-24">
+
+                        {isChecked && (
+                          <div className="flex items-center gap-1.5 max-w-[100px]">
                             <input
                               type="number"
-                              min={0}
-                              className="w-full bg-[#0d1322] border border-slate-800 rounded py-1 px-2 text-[11px] text-center text-emerald-400 font-bold"
-                              value={activePrice}
-                              onChange={(e) => handlePriceChange(d.value, parseFloat(e.target.value) || 0, true)}
+                              min={1}
+                              className="w-full bg-[#0d1322] border border-slate-800 rounded-lg py-1 px-2 text-[11px] font-bold text-center focus:outline-none focus:border-indigo-500"
+                              value={priceItem.price}
+                              onChange={(e) => handleEditPriceChange(plan.duration, parseFloat(e.target.value) || 0)}
                             />
-                            <span className="text-[10px] text-slate-500">ر.س</span>
+                            <span className="text-[10px] text-slate-500">SAR</span>
                           </div>
                         )}
                       </div>
@@ -671,20 +713,22 @@ export default function SellersManager() {
                 </div>
               </div>
 
-              <div className="pt-6 border-t border-slate-900 flex items-center justify-end gap-3" dir="ltr">
+              <div className={`pt-4 border-t border-slate-900 flex items-center justify-end gap-3 ${
+                language === 'ar' ? 'flex-row' : 'flex-row-reverse'
+              }`}>
                 <button
                   type="button"
                   onClick={() => setEditModalOpen(false)}
                   className="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs py-2.5 px-4 rounded-xl cursor-pointer"
                 >
-                  إلغاء
+                  {t('cancel')}
                 </button>
                 <button
                   type="submit"
                   disabled={loading}
                   className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold py-2.5 px-5 rounded-xl transition cursor-pointer"
                 >
-                  تحديث الحساب والصلاحيات
+                  {language === 'ar' ? 'حفظ التعديلات' : 'Save Changes'}
                 </button>
               </div>
             </form>

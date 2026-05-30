@@ -18,7 +18,10 @@ import {
   AlertTriangle,
   Menu,
   X,
+  Languages,
 } from 'lucide-react';
+import { useLanguage } from '@/lib/LanguageContext';
+import { TranslationKey } from '@/lib/translations';
 
 interface ClientLayoutHelperProps {
   user: {
@@ -39,14 +42,15 @@ export default function ClientLayoutHelper({
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { language, setLanguage, t } = useLanguage();
 
   const menuItems = [
-    { name: 'الرئيسية', path: '/dashboard', icon: LayoutDashboard, role: 'ALL' },
-    { name: 'العملاء والاشتراكات', path: '/customers', icon: Users, role: 'ALL' },
-    { name: 'المبيعات والأرباح', path: '/sales', icon: DollarSign, role: 'ALL' },
-    { name: 'سجلات الدخول', path: '/logs', icon: History, role: 'ALL' },
-    { name: 'إدارة الموزعين', path: '/sellers', icon: UserCheck, role: 'ADMIN' },
-    { name: 'إعدادات النظام', path: '/settings', icon: SettingsIcon, role: 'ADMIN' },
+    { nameKey: 'dashboard' as TranslationKey, path: '/dashboard', icon: LayoutDashboard, role: 'ALL' },
+    { nameKey: 'customers' as TranslationKey, path: '/customers', icon: Users, role: 'ALL' },
+    { nameKey: 'sales' as TranslationKey, path: '/sales', icon: DollarSign, role: 'ALL' },
+    { nameKey: 'logs' as TranslationKey, path: '/logs', icon: History, role: 'ALL' },
+    { nameKey: 'sellers' as TranslationKey, path: '/sellers', icon: UserCheck, role: 'ADMIN' },
+    { nameKey: 'settings' as TranslationKey, path: '/settings', icon: SettingsIcon, role: 'ADMIN' },
   ];
 
   const handleLogout = async () => {
@@ -70,7 +74,7 @@ export default function ClientLayoutHelper({
   return (
     <>
       {/* Mobile Top Header Bar */}
-      <header className="md:hidden w-full bg-[#101625]/90 backdrop-blur-md border-b border-slate-900 py-4 px-4 flex items-center justify-between z-40 fixed top-0 left-0">
+      <header className="md:hidden w-full bg-[#101625]/90 backdrop-blur-md border-b border-slate-900 py-4 px-4 flex items-center justify-between z-45 fixed top-0 left-0">
         <div className="flex items-center gap-3">
           <button
             onClick={() => setMobileOpen(!mobileOpen)}
@@ -78,25 +82,33 @@ export default function ClientLayoutHelper({
           >
             {mobileOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
-          <span className="font-bold text-slate-200 text-lg">لوحة الاشتراكات</span>
+          <span className="font-bold text-slate-200 text-base">{t('systemName')}</span>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setLanguage(language === 'ar' ? 'en' : 'ar')}
+            className="text-xs bg-indigo-500/10 text-indigo-400 px-2 py-1 rounded-lg border border-indigo-500/25 flex items-center gap-1 cursor-pointer"
+          >
+            <Languages className="w-3.5 h-3.5" />
+            <span>{language === 'ar' ? 'EN' : 'عربي'}</span>
+          </button>
           {expiringCount > 0 && (
             <span className="bg-amber-500/20 text-amber-500 border border-amber-500/30 text-xs px-2 py-1 rounded-full flex items-center gap-1">
               <AlertTriangle className="w-3.5 h-3.5" />
               {expiringCount}
             </span>
           )}
-          <span className="text-xs bg-indigo-500/10 text-indigo-400 px-2.5 py-1 rounded-lg border border-indigo-500/25">
-            {user.role === 'ADMIN' ? 'مدير' : 'موزع'}
-          </span>
         </div>
       </header>
 
       {/* Sidebar Container */}
       <aside
-        className={`fixed inset-y-0 right-0 z-50 w-64 bg-[#0d1322] border-l border-slate-900/60 flex flex-col transform transition-transform duration-300 md:relative md:transform-none md:translate-x-0 ${
-          mobileOpen ? 'translate-x-0' : 'translate-x-full'
+        className={`fixed inset-y-0 ${
+          language === 'ar' ? 'right-0 border-l' : 'left-0 border-r'
+        } z-50 w-64 bg-[#0d1322] border-slate-900/60 flex flex-col transform transition-transform duration-300 md:relative md:transform-none md:translate-x-0 ${
+          mobileOpen 
+            ? 'translate-x-0' 
+            : language === 'ar' ? 'translate-x-full' : '-translate-x-full'
         }`}
       >
         {/* Brand Header */}
@@ -106,8 +118,8 @@ export default function ClientLayoutHelper({
               <ShieldCheck className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="font-bold text-slate-100 text-base leading-tight">لوحة التحكم</h2>
-              <span className="text-slate-500 text-[10px]">مبيعات البرامج الموحدة</span>
+              <h2 className="font-bold text-slate-100 text-sm leading-tight">{t('brandName')}</h2>
+              <span className="text-slate-500 text-[10px]">{t('subBrandName')}</span>
             </div>
           </div>
           <button
@@ -140,7 +152,7 @@ export default function ClientLayoutHelper({
                       isActive ? 'text-white' : 'text-slate-500 group-hover:text-slate-400'
                     }`}
                   />
-                  <span>{item.name}</span>
+                  <span>{t(item.nameKey)}</span>
                 </div>
                 {item.path === '/customers' && expiringCount > 0 && (
                   <span
@@ -175,7 +187,7 @@ export default function ClientLayoutHelper({
             className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-slate-400 hover:bg-red-500/10 hover:text-red-400 border border-transparent hover:border-red-500/20 transition-all duration-200 text-xs font-medium cursor-pointer"
           >
             <LogOut className="w-4.5 h-4.5" />
-            <span>تسجيل الخروج</span>
+            <span>{t('logout')}</span>
           </button>
         </div>
       </aside>
@@ -185,22 +197,32 @@ export default function ClientLayoutHelper({
         {/* Top Header desktop */}
         <header className="hidden md:flex w-full bg-[#0a0f1d]/40 backdrop-blur-md border-b border-slate-900/40 py-4 px-8 items-center justify-between z-30">
           <div>
-            <span className="text-slate-500 text-xs font-medium">مرحباً بك في النظام الرقمي</span>
+            <span className="text-slate-500 text-xs font-medium">{t('welcomeBack')}</span>
             <h1 className="text-slate-100 font-bold text-lg leading-tight mt-0.5">{user.name}</h1>
           </div>
           <div className="flex items-center gap-4">
+            <button
+              onClick={() => setLanguage(language === 'ar' ? 'en' : 'ar')}
+              className="bg-[#121829] text-slate-400 border border-slate-800/80 px-3 py-1.5 rounded-xl hover:text-slate-200 transition cursor-pointer text-xs flex items-center gap-1.5"
+            >
+              <Languages className="w-4 h-4" />
+              <span>{language === 'ar' ? 'English' : 'العربية'}</span>
+            </button>
             {expiringCount > 0 && (
               <Link
                 href="/customers?status=ACTIVE"
                 className="bg-amber-500/10 text-amber-500 border border-amber-500/20 text-xs px-3.5 py-1.5 rounded-xl flex items-center gap-1.5 hover:bg-amber-500/20 transition"
               >
                 <AlertTriangle className="w-4 h-4 animate-pulse" />
-                <span>تنبيه: {expiringCount} اشتراكات تنتهي قريباً</span>
+                <span>{t('expiringAlert', { count: expiringCount })}</span>
               </Link>
             )}
             <div className="flex items-center gap-2">
               <span className="text-xs bg-[#121829] text-slate-400 border border-slate-800/80 px-3 py-1.5 rounded-xl">
-                الدور: <strong className="text-indigo-400 font-semibold">{user.role === 'ADMIN' ? 'مدير النظام' : 'موزع معتمد'}</strong>
+                {t('roleLabel')}{' '}
+                <strong className="text-indigo-400 font-semibold">
+                  {user.role === 'ADMIN' ? t('adminRole') : t('sellerRole')}
+                </strong>
               </span>
             </div>
           </div>

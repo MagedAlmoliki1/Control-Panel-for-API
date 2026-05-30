@@ -17,6 +17,7 @@ import {
   Calendar,
 } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
+import { useLanguage } from '@/lib/LanguageContext';
 
 interface AllowedPrice {
   duration: string;
@@ -84,6 +85,8 @@ export default function SalesManager({ sessionUser, sellers, customers }: SalesM
   const [customMethod, setCustomMethod] = useState('TRANSFER');
   const [customNotes, setCustomNotes] = useState('');
 
+  const { language, t } = useLanguage();
+
   // Fetch sales
   const fetchSales = async () => {
     setLoading(true);
@@ -95,11 +98,11 @@ export default function SalesManager({ sessionUser, sellers, customers }: SalesM
       if (methodFilter) params.append('paymentMethod', methodFilter);
 
       const res = await fetch(`/api/sales?${params.toString()}`);
-      if (!res.ok) throw new Error('فشل تحميل تقارير المبيعات');
+      if (!res.ok) throw new Error(language === 'ar' ? 'فشل تحميل تقارير المبيعات' : 'Failed to load sales reports');
       const data = await res.json();
       setSales(data);
     } catch (err: any) {
-      setError(err.message || 'حدث خطأ في تحميل الأرباح');
+      setError(err.message || (language === 'ar' ? 'حدث خطأ في تحميل الأرباح' : 'Error loading profits'));
     } finally {
       setLoading(false);
     }
@@ -153,15 +156,15 @@ export default function SalesManager({ sessionUser, sellers, customers }: SalesM
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'فشل تسجيل الدفعة');
+      if (!res.ok) throw new Error(data.error || (language === 'ar' ? 'فشل تسجيل الدفعة' : 'Failed to record payment'));
 
       setRecordModalOpen(false);
-      triggerSuccess('تم تسجيل العملية المالية وإضافة الدفعة بنجاح!');
+      triggerSuccess(language === 'ar' ? 'تم تسجيل العملية المالية وإضافة الدفعة بنجاح!' : 'Financial transaction recorded and payment added successfully!');
       setSelectedCustId('');
       setCustomNotes('');
       fetchSales();
     } catch (err: any) {
-      triggerError(err.message || 'فشل التسجيل');
+      triggerError(err.message || (language === 'ar' ? 'فشل التسجيل' : 'Failed to record'));
     } finally {
       setLoading(false);
     }
@@ -198,7 +201,9 @@ export default function SalesManager({ sessionUser, sellers, customers }: SalesM
 
   // Monthly Sales Chart Data formatter
   const getChartData = () => {
-    const months = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+    const monthsAr = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+    const monthsEn = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const months = language === 'ar' ? monthsAr : monthsEn;
     const monthlyMap: Record<number, number> = {};
 
     sales.forEach((s) => {
@@ -217,7 +222,7 @@ export default function SalesManager({ sessionUser, sellers, customers }: SalesM
       const mIdx = (currentMonth - i + 12) % 12;
       chartData.push({
         name: months[mIdx],
-        المبيعات: monthlyMap[mIdx] || 0,
+        [language === 'ar' ? 'المبيعات' : 'Sales']: monthlyMap[mIdx] || 0,
       });
     }
     return chartData;
@@ -229,50 +234,61 @@ export default function SalesManager({ sessionUser, sellers, customers }: SalesM
   const exportToCSV = () => {
     if (sales.length === 0) return;
 
-    const headers = ['رقم العملية', 'اسم المشترك', 'اسم المستخدم', 'معرف القاعدة', 'الموزع المسؤول', 'الباقة', 'المبلغ (ر.س)', 'طريقة الدفع', 'التاريخ', 'ملاحظات'];
+    const headersAr = ['رقم العملية', 'اسم المشترك', 'اسم المستخدم', 'معرف القاعدة', 'الموزع المسؤول', 'الباقة', 'المبلغ (ر.س)', 'طريقة الدفع', 'التاريخ', 'ملاحظات'];
+    const headersEn = ['Transaction ID', 'Subscriber Name', 'Username', 'Base ID', 'Responsible Seller', 'Package', 'Amount (SAR)', 'Payment Method', 'Date', 'Notes'];
+    const headers = language === 'ar' ? headersAr : headersEn;
     const csvRows = [headers.join(',')];
 
     sales.forEach((s) => {
+      const payMethodStr = s.paymentMethod === 'TRANSFER' 
+        ? (language === 'ar' ? 'حوالة بنكية' : 'Bank Transfer') 
+        : s.paymentMethod === 'CASH' 
+          ? (language === 'ar' ? 'نقدي' : 'Cash') 
+          : 'USDT';
+
       const row = [
         `"${s.id}"`,
-        `"${s.customer?.name || 'عميل محذوف'}"`,
+        `"${s.customer?.name || (language === 'ar' ? 'عميل محذوف' : 'Deleted customer')}"`,
         `"${s.customer?.username || 'N/A'}"`,
         `"${s.customer?.idBase || 'N/A'}"`,
         `"${s.seller.name}"`,
         `"${s.duration}"`,
         `"${s.amount}"`,
-        `"${s.paymentMethod === 'TRANSFER' ? 'حوالة بنكية' : s.paymentMethod === 'CASH' ? 'نقدي' : 'عملات رقمية'}"`,
-        `"${new Date(s.createdAt).toLocaleDateString('ar-SA')}"`,
+        `"${payMethodStr}"`,
+        `"${new Date(s.createdAt).toLocaleDateString(language === 'ar' ? 'ar-SA' : 'en-US')}"`,
         `"${s.notes || ''}"`,
       ];
       csvRows.push(row.join(','));
     });
 
-    // Excel compatibility BOM header for Arabic UTF-8 formatting
+    // Excel compatibility BOM header for UTF-8 formatting
     const csvContent = '\uFEFF' + csvRows.join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `تقرير_المبيعات_${new Date().toLocaleDateString('ar-SA')}.csv`);
+    link.setAttribute('download', `${language === 'ar' ? 'تقرير_المبيعات' : 'Sales_Report'}_${new Date().toLocaleDateString(language === 'ar' ? 'ar-SA' : 'en-US')}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
   const durationOptions = [
-    { label: 'ساعتين', value: '2 hours' },
-    { label: 'يوم واحد', value: '1 day' },
-    { label: '3 أيام', value: '3 days' },
-    { label: 'أسبوع واحد', value: '1 week' },
-    { label: 'شهر واحد', value: '1 month' },
-    { label: '3 أشهر', value: '3 months' },
-    { label: '6 أشهر', value: '6 months' },
-    { label: 'سنة واحدة', value: '1 year' },
+    { label: language === 'ar' ? 'ساعتين' : '2 Hours', value: '2 hours' },
+    { label: language === 'ar' ? 'يوم واحد' : '1 Day', value: '1 day' },
+    { label: language === 'ar' ? '3 أيام' : '3 Days', value: '3 days' },
+    { label: language === 'ar' ? 'أسبوع واحد' : '1 Week', value: '1 week' },
+    { label: language === 'ar' ? 'شهر واحد' : '1 Month', value: '1 month' },
+    { label: language === 'ar' ? '3 أشهر' : '3 Months', value: '3 months' },
+    { label: language === 'ar' ? '6 أشهر' : '6 Months', value: '6 months' },
+    { label: language === 'ar' ? 'سنة واحدة' : '1 Year', value: '1 year' },
   ];
 
+  const formatNum = (val: number) => val.toLocaleString(language === 'ar' ? 'ar-SA' : 'en-US');
+  const currencySuffix = language === 'ar' ? ' ر.س' : ' SAR';
+
   return (
-    <div className="space-y-6">
+    <div className={`space-y-6 ${language === 'ar' ? 'text-right' : 'text-left'}`}>
       {/* Success/Error Toasts */}
       {success && (
         <div className="fixed top-5 left-5 z-50 bg-emerald-500 text-white font-semibold py-3 px-6 rounded-2xl shadow-xl flex items-center gap-3 animate-slide-in">
@@ -290,8 +306,10 @@ export default function SalesManager({ sessionUser, sellers, customers }: SalesM
       {/* Header section with Custom Payment trigger */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-slate-100">المبيعات والتقارير المالية</h2>
-          <p className="text-slate-400 text-xs mt-0.5">متابعة إجمالي الإيرادات، الأرباح، وتسجيل العمليات المالية</p>
+          <h2 className="text-xl font-bold text-slate-100">{t('salesTitle')}</h2>
+          <p className="text-slate-400 text-xs mt-0.5">
+            {language === 'ar' ? 'متابعة إجمالي الإيرادات، الأرباح، وتسجيل العمليات المالية' : 'Monitor total revenue, profits, and record financial transactions'}
+          </p>
         </div>
         <div className="flex items-center gap-2.5">
           <button
@@ -300,14 +318,14 @@ export default function SalesManager({ sessionUser, sellers, customers }: SalesM
             className="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold py-3 px-4 rounded-xl transition flex items-center gap-2 border border-slate-700/50 cursor-pointer disabled:opacity-40"
           >
             <Download className="w-4 h-4" />
-            <span>تصدير CSV</span>
+            <span>{language === 'ar' ? 'تصدير CSV' : 'Export CSV'}</span>
           </button>
           <button
             onClick={() => setRecordModalOpen(true)}
             className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold py-3 px-4 rounded-xl transition duration-200 glow-primary border border-indigo-500/30 flex items-center gap-2 cursor-pointer"
           >
             <PlusCircle className="w-4.5 h-4.5" />
-            <span>تسجيل دفعة يدوية</span>
+            <span>{language === 'ar' ? 'تسجيل دفعة يدوية' : 'Record Manual Sale'}</span>
           </button>
         </div>
       </div>
@@ -316,45 +334,45 @@ export default function SalesManager({ sessionUser, sellers, customers }: SalesM
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         {/* Metric 1: Today */}
         <div className="glass-panel p-5 rounded-2xl border-slate-800/80">
-          <span className="text-slate-400 text-xs font-semibold">مبيعات اليوم</span>
+          <span className="text-slate-400 text-xs font-semibold">{language === 'ar' ? 'مبيعات اليوم' : "Today's Sales"}</span>
           <h3 className="text-xl font-bold text-slate-100 mt-2">
-            {todaySum.toLocaleString('ar-SA')} <span className="text-xs font-normal text-slate-400">ر.س</span>
+            {formatNum(todaySum)} <span className="text-xs font-normal text-slate-400">{currencySuffix}</span>
           </h3>
           <span className="text-[10px] text-emerald-400 font-medium flex items-center gap-0.5 mt-1.5">
-            <TrendingUp className="w-3.5 h-3.5" /> اليوم الحالي
+            <TrendingUp className="w-3.5 h-3.5" /> {language === 'ar' ? 'اليوم الحالي' : 'Current day'}
           </span>
         </div>
 
         {/* Metric 2: This Week */}
         <div className="glass-panel p-5 rounded-2xl border-slate-800/80">
-          <span className="text-slate-400 text-xs font-semibold">مبيعات الأسبوع</span>
+          <span className="text-slate-400 text-xs font-semibold">{language === 'ar' ? 'مبيعات الأسبوع' : 'Weekly Sales'}</span>
           <h3 className="text-xl font-bold text-slate-100 mt-2">
-            {weekSum.toLocaleString('ar-SA')} <span className="text-xs font-normal text-slate-400">ر.س</span>
+            {formatNum(weekSum)} <span className="text-xs font-normal text-slate-400">{currencySuffix}</span>
           </h3>
           <span className="text-[10px] text-indigo-400 font-medium flex items-center gap-0.5 mt-1.5">
-            <TrendingUp className="w-3.5 h-3.5" /> آخر 7 أيام عمل
+            <TrendingUp className="w-3.5 h-3.5" /> {language === 'ar' ? 'آخر 7 أيام عمل' : 'Last 7 days'}
           </span>
         </div>
 
         {/* Metric 3: This Month */}
         <div className="glass-panel p-5 rounded-2xl border-slate-800/80">
-          <span className="text-slate-400 text-xs font-semibold">مبيعات الشهر</span>
+          <span className="text-slate-400 text-xs font-semibold">{language === 'ar' ? 'مبيعات الشهر' : 'Monthly Sales'}</span>
           <h3 className="text-xl font-bold text-slate-100 mt-2">
-            {monthSum.toLocaleString('ar-SA')} <span className="text-xs font-normal text-slate-400">ر.س</span>
+            {formatNum(monthSum)} <span className="text-xs font-normal text-slate-400">{currencySuffix}</span>
           </h3>
           <span className="text-[10px] text-indigo-400 font-medium flex items-center gap-0.5 mt-1.5">
-            <TrendingUp className="w-3.5 h-3.5" /> إيراد الشهر الحالي
+            <TrendingUp className="w-3.5 h-3.5" /> {language === 'ar' ? 'إيراد الشهر الحالي' : 'Current month revenue'}
           </span>
         </div>
 
         {/* Metric 4: Total sum */}
         <div className="glass-panel p-5 rounded-2xl border-slate-800/80">
-          <span className="text-slate-400 text-xs font-semibold">إجمالي المبيعات المصفاة</span>
+          <span className="text-slate-400 text-xs font-semibold">{language === 'ar' ? 'إجمالي المبيعات المصفاة' : 'Filtered Total Sales'}</span>
           <h3 className="text-xl font-bold text-slate-100 mt-2">
-            {totalSales.toLocaleString('ar-SA')} <span className="text-xs font-normal text-slate-400">ر.س</span>
+            {formatNum(totalSales)} <span className="text-xs font-normal text-slate-400">{currencySuffix}</span>
           </h3>
           <span className="text-[10px] text-emerald-400 font-medium flex items-center gap-0.5 mt-1.5">
-            <CheckCircle className="w-3.5 h-3.5" /> إجمالي التفعيلات
+            <CheckCircle className="w-3.5 h-3.5" /> {language === 'ar' ? 'إجمالي التفعيلات' : 'Total activations'}
           </span>
         </div>
       </div>
@@ -364,8 +382,12 @@ export default function SalesManager({ sessionUser, sellers, customers }: SalesM
         {/* Monthly analytical chart */}
         <div className="lg:col-span-2 glass-panel p-6 rounded-2xl border-slate-800/80">
           <div className="mb-6">
-            <h3 className="text-base font-bold text-slate-100">تحليل الأرباح الشهرية (الربع الحالي)</h3>
-            <p className="text-slate-400 text-[10px]">مخطط المبيعات ومجموع العمليات المسجلة للشهور الستة الأخيرة</p>
+            <h3 className="text-base font-bold text-slate-100">
+              {language === 'ar' ? 'تحليل الأرباح الشهرية (الربع الحالي)' : 'Monthly Profit Analysis (Current Quarter)'}
+            </h3>
+            <p className="text-slate-400 text-[10px]">
+              {language === 'ar' ? 'مخطط المبيعات ومجموع العمليات المسجلة للشهور الستة الأخيرة' : 'Sales graph and sum of registered transactions for the last 6 months'}
+            </p>
           </div>
           <div className="h-72 w-full" dir="ltr">
             <ResponsiveContainer width="100%" height="100%">
@@ -374,27 +396,31 @@ export default function SalesManager({ sessionUser, sellers, customers }: SalesM
                 <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
                 <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
                 <Tooltip cursor={{ fill: 'rgba(99, 102, 241, 0.05)', radius: 8 }} />
-                <Bar dataKey="المبيعات" fill="#6366f1" radius={[6, 6, 0, 0]} maxBarSize={30} />
+                <Bar dataKey={language === 'ar' ? 'المبيعات' : 'Sales'} fill="#6366f1" radius={[6, 6, 0, 0]} maxBarSize={30} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
 
         {/* Multi-Filters Workspace */}
-        <div className="glass-panel p-6 rounded-2xl border-slate-800/80 text-right space-y-4">
-          <h3 className="text-base font-bold text-slate-100 border-b border-slate-900 pb-3">تصفية التقرير المالي</h3>
+        <div className="glass-panel p-6 rounded-2xl border-slate-800/80 space-y-4">
+          <h3 className="text-base font-bold text-slate-100 border-b border-slate-900 pb-3">
+            {language === 'ar' ? 'تصفية التقرير المالي' : 'Filter Financial Report'}
+          </h3>
 
           {/* Search by Customer Name */}
           <div>
-            <label className="block text-slate-400 text-[10px] font-semibold mb-2">اسم المشترك أو المستخدم</label>
+            <label className="block text-slate-400 text-[10px] font-semibold mb-2">{language === 'ar' ? 'اسم المشترك أو المستخدم' : 'Subscriber Name or Username'}</label>
             <div className="relative">
-              <div className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-slate-500">
+              <div className={`absolute inset-y-0 ${language === 'ar' ? 'right-0 pr-3.5' : 'left-0 pl-3.5'} flex items-center pointer-events-none text-slate-500`}>
                 <Search className="w-4 h-4" />
               </div>
               <input
                 type="text"
-                placeholder="ابحث بالاسم..."
-                className="w-full bg-[#0a0f1d]/60 border border-slate-800 rounded-xl py-2.5 pr-10 pl-4 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 text-right"
+                placeholder={language === 'ar' ? 'ابحث بالاسم...' : 'Search by name...'}
+                className={`w-full bg-[#0a0f1d]/60 border border-slate-800 rounded-xl py-2.5 ${
+                  language === 'ar' ? 'pr-10 pl-4 text-right' : 'pl-10 pr-4 text-left'
+                } text-xs text-slate-200 focus:outline-none focus:border-indigo-500`}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -404,13 +430,15 @@ export default function SalesManager({ sessionUser, sellers, customers }: SalesM
           {/* Filter by Seller (Admin Only) */}
           {sessionUser.role === 'ADMIN' && (
             <div>
-              <label className="block text-slate-400 text-[10px] font-semibold mb-2">الموزع المسؤول</label>
+              <label className="block text-slate-400 text-[10px] font-semibold mb-2">{t('sellers')}</label>
               <select
-                className="w-full bg-[#0a0f1d]/60 border border-slate-800 rounded-xl py-2.5 px-4 text-xs text-slate-300 focus:outline-none focus:border-indigo-500 text-right cursor-pointer"
+                className={`w-full bg-[#0a0f1d]/60 border border-slate-800 rounded-xl py-2.5 px-4 text-xs text-slate-300 focus:outline-none focus:border-indigo-500 cursor-pointer ${
+                  language === 'ar' ? 'text-right' : 'text-left'
+                }`}
                 value={sellerFilter}
                 onChange={(e) => setSellerFilter(e.target.value)}
               >
-                <option value="">جميع الموزعين</option>
+                <option value="">{language === 'ar' ? 'جميع الموزعين' : 'All Sellers'}</option>
                 {sellers.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.name}
@@ -422,13 +450,15 @@ export default function SalesManager({ sessionUser, sellers, customers }: SalesM
 
           {/* Filter by Duration */}
           <div>
-            <label className="block text-slate-400 text-[10px] font-semibold mb-2">باقة الاشتراك</label>
+            <label className="block text-slate-400 text-[10px] font-semibold mb-2">{t('duration')}</label>
             <select
-              className="w-full bg-[#0a0f1d]/60 border border-slate-800 rounded-xl py-2.5 px-4 text-xs text-slate-300 focus:outline-none focus:border-indigo-500 text-right cursor-pointer"
+              className={`w-full bg-[#0a0f1d]/60 border border-slate-800 rounded-xl py-2.5 px-4 text-xs text-slate-300 focus:outline-none focus:border-indigo-500 cursor-pointer ${
+                language === 'ar' ? 'text-right' : 'text-left'
+              }`}
               value={durationFilter}
               onChange={(e) => setDurationFilter(e.target.value)}
             >
-              <option value="">جميع الباقات</option>
+              <option value="">{language === 'ar' ? 'جميع الباقات' : 'All Packages'}</option>
               {durationOptions.map((d) => (
                 <option key={d.value} value={d.value}>
                   {d.label}
@@ -439,16 +469,18 @@ export default function SalesManager({ sessionUser, sellers, customers }: SalesM
 
           {/* Filter by Payment Method */}
           <div>
-            <label className="block text-slate-400 text-[10px] font-semibold mb-2">طريقة الدفع</label>
+            <label className="block text-slate-400 text-[10px] font-semibold mb-2">{t('paymentMethod')}</label>
             <select
-              className="w-full bg-[#0a0f1d]/60 border border-slate-800 rounded-xl py-2.5 px-4 text-xs text-slate-300 focus:outline-none focus:border-indigo-500 text-right cursor-pointer"
+              className={`w-full bg-[#0a0f1d]/60 border border-slate-800 rounded-xl py-2.5 px-4 text-xs text-slate-300 focus:outline-none focus:border-indigo-500 cursor-pointer ${
+                language === 'ar' ? 'text-right' : 'text-left'
+              }`}
               value={methodFilter}
               onChange={(e) => setMethodFilter(e.target.value)}
             >
-              <option value="">جميع طرق الدفع</option>
-              <option value="TRANSFER">حوالة بنكية</option>
-              <option value="CASH">دفع نقدي</option>
-              <option value="USDT">عملة رقمية USDT</option>
+              <option value="">{t('allPaymentMethods')}</option>
+              <option value="TRANSFER">{t('paymentMethodTransfer')}</option>
+              <option value="CASH">{t('paymentMethodCash')}</option>
+              <option value="USDT">{t('paymentMethodUsdt')}</option>
             </select>
           </div>
         </div>
@@ -459,32 +491,32 @@ export default function SalesManager({ sessionUser, sellers, customers }: SalesM
         {loading && sales.length === 0 ? (
           <div className="p-12 text-center text-slate-500 text-xs">
             <span className="w-6 h-6 border-2 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin inline-block mb-3" />
-            <p>جاري تحميل سجل المعاملات المالية...</p>
+            <p>{language === 'ar' ? 'جاري تحميل سجل المعاملات المالية...' : 'Loading financial ledger logs...'}</p>
           </div>
         ) : sales.length === 0 ? (
           <div className="p-16 text-center text-slate-500 text-xs m-4 border border-dashed border-slate-800 rounded-2xl">
-            لا توجد أية معاملات مبيعات مسجلة تطابق التصفية الحالية.
+            {t('noSalesFound')}
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-right border-collapse text-xs">
+            <table className={`w-full text-xs border-collapse ${language === 'ar' ? 'text-right' : 'text-left'}`}>
               <thead>
                 <tr className="border-b border-slate-800 bg-slate-900/10 text-slate-400">
-                  <th className="p-4 font-semibold">المشترك والبرنامج</th>
-                  {sessionUser.role === 'ADMIN' && <th className="p-4 font-semibold">الموزع</th>}
-                  <th className="p-4 font-semibold text-center">الباقة</th>
-                  <th className="p-4 font-semibold text-center">طريقة الدفع</th>
-                  <th className="p-4 font-semibold text-center">المبلغ المستلم</th>
-                  <th className="p-4 font-semibold">تاريخ العملية</th>
-                  <th className="p-4 font-semibold">ملاحظات الصفقة</th>
+                  <th className="p-4 font-semibold">{t('tableClientName')}</th>
+                  {sessionUser.role === 'ADMIN' && <th className="p-4 font-semibold">{t('tableSeller')}</th>}
+                  <th className="p-4 font-semibold text-center">{t('duration')}</th>
+                  <th className="p-4 font-semibold text-center">{t('paymentMethod')}</th>
+                  <th className="p-4 font-semibold text-center">{language === 'ar' ? 'المبلغ المستلم' : 'Received Amount'}</th>
+                  <th className="p-4 font-semibold">{t('tableDate')}</th>
+                  <th className="p-4 font-semibold">{language === 'ar' ? 'ملاحظات الصفقة' : 'Deal Notes'}</th>
                 </tr>
               </thead>
               <tbody>
                 {sales.map((sale) => (
                   <tr key={sale.id} className="border-b border-slate-900/40 hover:bg-slate-800/10">
                     <td className="p-4 font-medium text-slate-100">
-                      <div className="font-semibold">{sale.customer ? sale.customer.name : 'عميل محذوف'}</div>
-                      <div className="text-[10px] text-slate-500 mt-1">@{sale.customer?.username || 'N/A'}</div>
+                      <div className="font-semibold">{sale.customer ? sale.customer.name : 'Deleted customer'}</div>
+                      <div className="text-[10px] text-slate-500 mt-1 font-mono">@{sale.customer?.username || 'N/A'}</div>
                     </td>
                     {sessionUser.role === 'ADMIN' && (
                       <td className="p-4 text-slate-400">{sale.seller.name}</td>
@@ -495,13 +527,13 @@ export default function SalesManager({ sessionUser, sellers, customers }: SalesM
                       </span>
                     </td>
                     <td className="p-4 text-center text-slate-300">
-                      {sale.paymentMethod === 'TRANSFER' ? 'حوالة بنكية' : sale.paymentMethod === 'CASH' ? 'دفع نقدي' : 'USDT'}
+                      {sale.paymentMethod === 'TRANSFER' ? t('paymentMethodTransfer') : sale.paymentMethod === 'CASH' ? t('paymentMethodCash') : 'USDT'}
                     </td>
                     <td className="p-4 text-center text-emerald-400 font-bold">
-                      {sale.amount.toLocaleString('ar-SA')} ر.س
+                      {formatNum(sale.amount)}{currencySuffix}
                     </td>
                     <td className="p-4 text-slate-400">
-                      {new Date(sale.createdAt).toLocaleDateString('ar-SA')}
+                      {new Date(sale.createdAt).toLocaleDateString(language === 'ar' ? 'ar-SA' : 'en-US')}
                     </td>
                     <td className="p-4 text-slate-400 max-w-[200px] truncate" title={sale.notes || ''}>
                       {sale.notes || '-'}
@@ -519,11 +551,13 @@ export default function SalesManager({ sessionUser, sellers, customers }: SalesM
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setRecordModalOpen(false)} />
 
-          <div className="w-full max-w-lg bg-[#0d1322] border border-slate-800 rounded-2xl p-6 z-10 text-right glow-primary">
+          <div className={`w-full max-w-lg bg-[#0d1322] border border-slate-800 rounded-2xl p-6 z-10 glow-primary ${
+            language === 'ar' ? 'text-right' : 'text-left'
+          }`}>
             <div className="flex items-center justify-between border-b border-slate-900 pb-4 mb-6">
               <h3 className="font-bold text-slate-100 text-lg flex items-center gap-2">
                 <PlusCircle className="w-5 h-5 text-indigo-400" />
-                تسجيل دفعة يدوية منفصلة
+                {language === 'ar' ? 'تسجيل دفعة يدوية منفصلة' : 'Record Separate Manual Payment'}
               </h3>
               <button onClick={() => setRecordModalOpen(false)} className="text-slate-500 hover:text-slate-300 cursor-pointer">
                 <X className="w-6 h-6" />
@@ -533,14 +567,16 @@ export default function SalesManager({ sessionUser, sellers, customers }: SalesM
             <form onSubmit={handleRecordPayment} className="space-y-4">
               {/* Select Customer */}
               <div>
-                <label className="block text-slate-300 text-xs font-semibold mb-2">المشترك المعني بالدفعة</label>
+                <label className="block text-slate-300 text-xs font-semibold mb-2">{language === 'ar' ? 'المشترك المعني بالدفعة' : 'Target Subscriber'}</label>
                 <select
                   required
-                  className="w-full bg-[#070b13] border border-slate-800 rounded-xl py-3 px-4 text-xs text-slate-300 focus:outline-none focus:border-indigo-500 text-right cursor-pointer"
+                  className={`w-full bg-[#070b13] border border-slate-800 rounded-xl py-3 px-4 text-xs text-slate-300 focus:outline-none focus:border-indigo-500 cursor-pointer ${
+                    language === 'ar' ? 'text-right' : 'text-left'
+                  }`}
                   value={selectedCustId}
                   onChange={(e) => setSelectedCustId(e.target.value)}
                 >
-                  <option value="">اختر مشتركاً...</option>
+                  <option value="">{language === 'ar' ? 'اختر مشتركاً...' : 'Select subscriber...'}</option>
                   {customers.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name} (@{c.username})
@@ -552,9 +588,11 @@ export default function SalesManager({ sessionUser, sellers, customers }: SalesM
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Duration */}
                 <div>
-                  <label className="block text-slate-300 text-xs font-semibold mb-2">باقة الاشتراك</label>
+                  <label className="block text-slate-300 text-xs font-semibold mb-2">{t('duration')}</label>
                   <select
-                    className="w-full bg-[#070b13] border border-slate-800 rounded-xl py-3 px-4 text-xs text-slate-300 focus:outline-none focus:border-indigo-500 text-right cursor-pointer"
+                    className={`w-full bg-[#070b13] border border-slate-800 rounded-xl py-3 px-4 text-xs text-slate-300 focus:outline-none focus:border-indigo-500 cursor-pointer ${
+                      language === 'ar' ? 'text-right' : 'text-left'
+                    }`}
                     value={customDuration}
                     onChange={(e) => setCustomDuration(e.target.value)}
                   >
@@ -568,12 +606,14 @@ export default function SalesManager({ sessionUser, sellers, customers }: SalesM
 
                 {/* Amount */}
                 <div>
-                  <label className="block text-slate-300 text-xs font-semibold mb-2">المبلغ المستلم (ر.س)</label>
+                  <label className="block text-slate-300 text-xs font-semibold mb-2">{language === 'ar' ? 'المبلغ المستلم (ر.س)' : 'Received Amount (SAR)'}</label>
                   <input
                     type="number"
                     required
                     min={0}
-                    className="w-full bg-[#070b13] border border-slate-800 rounded-xl py-3 px-4 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 text-right font-bold"
+                    className={`w-full bg-[#070b13] border border-slate-800 rounded-xl py-3 px-4 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 font-bold ${
+                      language === 'ar' ? 'text-right' : 'text-left'
+                    }`}
                     value={customAmount}
                     onChange={(e) => setCustomAmount(parseFloat(e.target.value) || 0)}
                   />
@@ -582,44 +622,50 @@ export default function SalesManager({ sessionUser, sellers, customers }: SalesM
 
               {/* Payment Method */}
               <div>
-                <label className="block text-slate-300 text-xs font-semibold mb-2">طريقة الدفع</label>
+                <label className="block text-slate-300 text-xs font-semibold mb-2">{t('paymentMethod')}</label>
                 <select
-                  className="w-full bg-[#070b13] border border-slate-800 rounded-xl py-3 px-4 text-xs text-slate-300 focus:outline-none focus:border-indigo-500 text-right cursor-pointer"
+                  className={`w-full bg-[#070b13] border border-slate-800 rounded-xl py-3 px-4 text-xs text-slate-300 focus:outline-none focus:border-indigo-500 cursor-pointer ${
+                    language === 'ar' ? 'text-right' : 'text-left'
+                  }`}
                   value={customMethod}
                   onChange={(e) => setCustomMethod(e.target.value)}
                 >
-                  <option value="TRANSFER">حوالة بنكية</option>
-                  <option value="CASH">دفع نقدي</option>
-                  <option value="USDT">عملة رقمية USDT</option>
+                  <option value="TRANSFER">{t('paymentMethodTransfer')}</option>
+                  <option value="CASH">{t('paymentMethodCash')}</option>
+                  <option value="USDT">{t('paymentMethodUsdt')}</option>
                 </select>
               </div>
 
               {/* Notes */}
               <div>
-                <label className="block text-slate-300 text-xs font-semibold mb-2">ملاحظات</label>
+                <label className="block text-slate-300 text-xs font-semibold mb-2">{t('notes')}</label>
                 <textarea
-                  placeholder="رقم العملية، معلومات المحفظة الرقمية، أو تفاصيل إضافية..."
+                  placeholder={language === 'ar' ? 'رقم العملية، معلومات المحفظة الرقمية، أو تفاصيل إضافية...' : 'Transaction reference number, wallet details, or additional descriptions...'}
                   rows={2}
-                  className="w-full bg-[#070b13] border border-slate-800 rounded-xl py-3 px-4 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 text-right resize-none"
+                  className={`w-full bg-[#070b13] border border-slate-800 rounded-xl py-3 px-4 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 resize-none ${
+                    language === 'ar' ? 'text-right' : 'text-left'
+                  }`}
                   value={customNotes}
                   onChange={(e) => setCustomNotes(e.target.value)}
                 />
               </div>
 
-              <div className="pt-4 border-t border-slate-900 flex items-center justify-end gap-3" dir="ltr">
+              <div className={`pt-4 border-t border-slate-900 flex items-center justify-end gap-3 ${
+                language === 'ar' ? 'flex-row' : 'flex-row-reverse'
+              }`}>
                 <button
                   type="button"
                   onClick={() => setRecordModalOpen(false)}
                   className="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs py-2.5 px-4 rounded-xl cursor-pointer"
                 >
-                  إلغاء
+                  {t('cancel')}
                 </button>
                 <button
                   type="submit"
                   disabled={loading}
                   className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold py-2.5 px-5 rounded-xl transition cursor-pointer"
                 >
-                  تأكيد وتسجيل الدفعة
+                  {language === 'ar' ? 'تأكيد وتسجيل الدفعة' : 'Confirm & Record Sale'}
                 </button>
               </div>
             </form>

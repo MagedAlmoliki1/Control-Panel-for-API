@@ -19,6 +19,7 @@ import {
   EyeOff,
   Percent,
 } from 'lucide-react';
+import { useLanguage } from '@/lib/LanguageContext';
 
 interface PricePlan {
   label: string;
@@ -57,6 +58,8 @@ export default function SettingsPage() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
+  const { language, t } = useLanguage();
+
   const triggerSuccess = (msg: string) => {
     setSuccessMsg(msg);
     setTimeout(() => setSuccessMsg(''), 4500);
@@ -71,7 +74,7 @@ export default function SettingsPage() {
     setLoading(true);
     try {
       const res = await fetch('/api/settings');
-      if (!res.ok) throw new Error('فشل جلب إعدادات النظام');
+      if (!res.ok) throw new Error(language === 'ar' ? 'فشل جلب إعدادات النظام' : 'Failed to fetch system settings');
       const data = await res.json();
       
       setBaseUrl(data.api.baseUrl);
@@ -81,7 +84,7 @@ export default function SettingsPage() {
       setExpiryThresholdDays(data.expiryThresholdDays);
       setPricePlans(data.pricePlans || []);
     } catch (err: any) {
-      triggerError(err.message || 'فشل تحميل الإعدادات');
+      triggerError(err.message || (language === 'ar' ? 'فشل تحميل الإعدادات' : 'Failed to load settings'));
     } finally {
       setLoading(false);
     }
@@ -114,12 +117,16 @@ export default function SettingsPage() {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'فشل حفظ التعديلات');
+      if (!res.ok) throw new Error(data.error || (language === 'ar' ? 'فشل حفظ التعديلات' : 'Failed to save changes'));
 
-      triggerSuccess('تم حفظ إعدادات النظام وتعديلات خوادم الربط بنجاح!');
+      triggerSuccess(
+        language === 'ar' 
+          ? 'تم حفظ إعدادات النظام وتعديلات خوادم الربط بنجاح!' 
+          : 'System settings and API connections saved successfully!'
+      );
       fetchSettings();
     } catch (err: any) {
-      triggerError(err.message || 'فشل الحفظ');
+      triggerError(err.message || (language === 'ar' ? 'فشل الحفظ' : 'Failed to save'));
     } finally {
       setSubmitting(false);
     }
@@ -129,13 +136,17 @@ export default function SettingsPage() {
   const handleAddPricePlan = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newLabel || !newDuration || newPrice <= 0) {
-      triggerError('يرجى ملء جميع حقول الباقة وتحديد سعر أكبر من الصفر');
+      triggerError(
+        language === 'ar' 
+          ? 'يرجى ملء جميع حقول الباقة وتحديد سعر أكبر من الصفر' 
+          : 'Please fill all plan fields and select a price greater than zero'
+      );
       return;
     }
 
     // Check if duration exists
     if (pricePlans.some(p => p.duration.toLowerCase() === newDuration.toLowerCase())) {
-      triggerError('هذه المدة أو الباقة مسجلة بالفعل');
+      triggerError(language === 'ar' ? 'هذه المدة أو الباقة مسجلة بالفعل' : 'This duration or package is already registered');
       return;
     }
 
@@ -149,21 +160,33 @@ export default function SettingsPage() {
     setNewLabel('');
     setNewDuration('');
     setNewPrice(0);
-    triggerSuccess('تمت إضافة الباقة مؤقتاً. يرجى الضغط على زر حفظ لحفظها نهائياً.');
+    triggerSuccess(
+      language === 'ar' 
+        ? 'تمت إضافة الباقة مؤقتاً. يرجى الضغط على زر حفظ لحفظها نهائياً.' 
+        : 'Package added temporarily. Please click Save Settings to save permanently.'
+    );
   };
 
   // Pricing Plan CRUD: Delete
   const handleDeletePricePlan = (duration: string) => {
     const updatedPlans = pricePlans.filter(p => p.duration !== duration);
     setPricePlans(updatedPlans);
-    triggerSuccess('تمت إزالة الباقة مؤقتاً. يرجى الضغط على زر حفظ لحفظ التغييرات.');
+    triggerSuccess(
+      language === 'ar' 
+        ? 'تمت إزالة الباقة مؤقتاً. يرجى الضغط على زر حفظ لحفظ التغييرات.' 
+        : 'Package removed temporarily. Please click Save Settings to save changes.'
+    );
   };
 
   // Submit Password Change
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newPassword !== confirmPassword) {
-      triggerError('كلمة المرور الجديدة غير متطابقة مع التأكيد');
+      triggerError(
+        language === 'ar' 
+          ? 'كلمة المرور الجديدة غير متطابقة مع التأكيد' 
+          : 'New password does not match confirmation'
+      );
       return;
     }
 
@@ -176,21 +199,27 @@ export default function SettingsPage() {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'فشل تعديل كلمة المرور');
+      if (!res.ok) throw new Error(data.error || (language === 'ar' ? 'فشل تعديل كلمة المرور' : 'Failed to change password'));
 
-      triggerSuccess('تم تحديث كلمة المرور لمدير النظام بنجاح!');
+      triggerSuccess(
+        language === 'ar' 
+          ? 'تم تحديث كلمة المرور لمدير النظام بنجاح!' 
+          : 'Administrator password updated successfully!'
+      );
       setOldPassword('');
       setNewPassword('');
       setConfirmPassword('');
     } catch (err: any) {
-      triggerError(err.message || 'فشل تعديل الحساب');
+      triggerError(err.message || (language === 'ar' ? 'فشل تعديل الحساب' : 'Failed to update account'));
     } finally {
       setSubmitting(false);
     }
   };
 
+  const currencySuffix = language === 'ar' ? ' ر.س' : ' SAR';
+
   return (
-    <div className="space-y-6 text-right" dir="rtl">
+    <div className={`space-y-6 ${language === 'ar' ? 'text-right' : 'text-left'}`}>
       {/* Toast Alerters */}
       {successMsg && (
         <div className="fixed top-5 left-5 z-50 bg-emerald-500 text-white font-semibold py-3 px-6 rounded-2xl shadow-xl flex items-center gap-3 animate-slide-in">
@@ -211,9 +240,13 @@ export default function SettingsPage() {
           <div className="p-2 bg-indigo-500/10 rounded-xl border border-indigo-500/20 text-indigo-400">
             <SettingsIcon className="w-5 h-5" />
           </div>
-          <span>إعدادات النظام الفنية (أدمن فقط)</span>
+          <span>{language === 'ar' ? 'إعدادات النظام الفنية (أدمن فقط)' : 'System Settings (Admin Only)'}</span>
         </h2>
-        <p className="text-slate-400 text-xs mt-1">تعديل معاملات الربط البرمجي للـ API، قائمة أسعار الباقات الموحدة وحماية حساب الإدارة</p>
+        <p className="text-slate-400 text-xs mt-1">
+          {language === 'ar' 
+            ? 'تعديل معاملات الربط البرمجي للـ API، قائمة أسعار الباقات الموحدة وحماية حساب الإدارة' 
+            : 'Configure API integrations, unified packages pricing lists, and admin authentication security'}
+        </p>
       </div>
 
       {/* Nav Tabs */}
@@ -226,7 +259,7 @@ export default function SettingsPage() {
               : 'border-transparent text-slate-500 hover:text-slate-300'
           }`}
         >
-          إعدادات الربط والـ API
+          {language === 'ar' ? 'إعدادات الربط والـ API' : 'Connection & API Settings'}
         </button>
         <button
           onClick={() => setActiveTab('prices')}
@@ -236,7 +269,7 @@ export default function SettingsPage() {
               : 'border-transparent text-slate-500 hover:text-slate-300'
           }`}
         >
-          إدارة خطط وباقات الأسعار
+          {language === 'ar' ? 'إدارة خطط وباقات الأسعار' : 'Pricing Plans & Packages'}
         </button>
         <button
           onClick={() => setActiveTab('security')}
@@ -246,14 +279,14 @@ export default function SettingsPage() {
               : 'border-transparent text-slate-500 hover:text-slate-300'
           }`}
         >
-          أمان حساب المسؤول
+          {language === 'ar' ? 'أمان حساب المسؤول' : 'Admin Security'}
         </button>
       </div>
 
       {loading ? (
         <div className="glass-panel p-16 text-center text-slate-500 text-xs rounded-2xl border-slate-800">
           <span className="w-7 h-7 border-2 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin inline-block mb-3" />
-          <p>جاري تحميل ملف إعدادات الخادم الفني وتدقيق الصلاحيات الفيدرالية...</p>
+          <p>{language === 'ar' ? 'جاري تحميل ملف إعدادات الخادم الفني...' : 'Loading technical server configuration file...'}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-6">
@@ -263,47 +296,59 @@ export default function SettingsPage() {
             <form onSubmit={handleSaveSettings} className="glass-panel p-6 md:p-8 rounded-2xl border-slate-800/80 space-y-6">
               <h3 className="font-bold text-slate-200 text-sm flex items-center gap-2 border-b border-slate-900 pb-3">
                 <Server className="w-4.5 h-4.5 text-indigo-400" />
-                <span>إعدادات الاتصال بمزود الاشتراكات الخارجي (API)</span>
+                <span>{t('apiSettingsCard')}</span>
               </h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 {/* Provider Type */}
                 <div>
-                  <label className="block text-slate-300 text-xs font-semibold mb-2">نوع مزود الخدمة النشط</label>
+                  <label className="block text-slate-300 text-xs font-semibold mb-2">{t('apiProviderMode')}</label>
                   <select
-                    className="w-full bg-[#070b13] border border-slate-800 rounded-xl py-3 px-4 text-xs text-slate-300 focus:outline-none focus:border-indigo-500 text-right cursor-pointer"
+                    className={`w-full bg-[#070b13] border border-slate-800 rounded-xl py-3 px-4 text-xs text-slate-300 focus:outline-none focus:border-indigo-500 cursor-pointer ${
+                      language === 'ar' ? 'text-right' : 'text-left'
+                    }`}
                     value={providerType}
                     onChange={(e) => setProviderType(e.target.value as 'MOCK' | 'REAL')}
                   >
-                    <option value="MOCK">محاكي اختبار داخلي (Mock System Provider)</option>
-                    <option value="REAL">مزود الشريك الفعلي المباشر (Production API Endpoint)</option>
+                    <option value="MOCK">{t('mockMode')}</option>
+                    <option value="REAL">{t('liveMode')}</option>
                   </select>
                 </div>
 
                 {/* Expiry Alert Days */}
                 <div>
-                  <label className="block text-slate-300 text-xs font-semibold mb-2">تنبيهات اقتراب انتهاء الاشتراك (بالأيام)</label>
+                  <label className="block text-slate-300 text-xs font-semibold mb-2">
+                    {language === 'ar' ? 'تنبيهات اقتراب انتهاء الاشتراك (بالأيام)' : 'Subscription Expiry Alert (Days)'}
+                  </label>
                   <input
                     type="number"
                     min={1}
                     required
-                    className="w-full bg-[#070b13] border border-slate-800 rounded-xl py-3 px-4 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 text-right font-bold"
+                    className={`w-full bg-[#070b13] border border-slate-800 rounded-xl py-3 px-4 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 font-bold ${
+                      language === 'ar' ? 'text-right' : 'text-left'
+                    }`}
                     value={expiryThresholdDays}
                     onChange={(e) => setExpiryThresholdDays(parseInt(e.target.value) || 3)}
                   />
-                  <span className="text-[10px] text-slate-500 mt-1.5 block">إظهار إنذار في لوحة التحكم للاشتراكات التي ينتهي تاريخها خلال هذه الأيام.</span>
+                  <span className="text-[10px] text-slate-500 mt-1.5 block">
+                    {language === 'ar' 
+                      ? 'إظهار إنذار في لوحة التحكم للاشتراكات التي ينتهي تاريخها خلال هذه الأيام.' 
+                      : 'Show warning on dashboard for subscriptions expiring within this number of days.'}
+                  </span>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 {/* Base URL */}
                 <div>
-                  <label className="block text-slate-300 text-xs font-semibold mb-2">رابط الخادم الأساسي (Base URL)</label>
+                  <label className="block text-slate-300 text-xs font-semibold mb-2">{t('apiEndpointUrl')}</label>
                   <input
                     type="url"
                     required
                     placeholder="https://api.partner-software.com/v1"
-                    className="w-full bg-[#070b13] border border-slate-800 rounded-xl py-3 px-4 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 text-right text-ltr"
+                    className={`w-full bg-[#070b13] border border-slate-800 rounded-xl py-3 px-4 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 text-ltr ${
+                      language === 'ar' ? 'text-right' : 'text-left'
+                    }`}
                     value={baseUrl}
                     onChange={(e) => setBaseUrl(e.target.value)}
                   />
@@ -311,16 +356,20 @@ export default function SettingsPage() {
 
                 {/* Timeout */}
                 <div>
-                  <label className="block text-slate-300 text-xs font-semibold mb-2">مهلة استجابة الخادم الخارجي (بالثواني)</label>
+                  <label className="block text-slate-300 text-xs font-semibold mb-2">
+                    {language === 'ar' ? 'مهلة استجابة الخادم الخارجي (بالثواني)' : 'External Server Timeout (Seconds)'}
+                  </label>
                   <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-500 text-xs font-semibold">
-                      ثواني
+                    <div className={`absolute inset-y-0 ${language === 'ar' ? 'left-0 pl-4' : 'right-0 pr-4'} flex items-center pointer-events-none text-slate-500 text-xs font-semibold`}>
+                      {language === 'ar' ? 'ثواني' : 'seconds'}
                     </div>
                     <input
                       type="number"
                       min={1}
                       required
-                      className="w-full bg-[#070b13] border border-slate-800 rounded-xl py-3 pr-4 pl-16 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 text-right font-bold"
+                      className={`w-full bg-[#070b13] border border-slate-800 rounded-xl py-3 pr-4 pl-16 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 font-bold ${
+                        language === 'ar' ? 'text-right' : 'text-left'
+                      }`}
                       value={timeout}
                       onChange={(e) => setTimeoutVal(parseInt(e.target.value) || 5)}
                     />
@@ -330,34 +379,40 @@ export default function SettingsPage() {
 
               {/* API Key */}
               <div>
-                <label className="block text-slate-300 text-xs font-semibold mb-2">مفتاح ترخيص الـ API (Access Key)</label>
+                <label className="block text-slate-300 text-xs font-semibold mb-2">{t('apiToken')}</label>
                 <div className="relative">
                   <button
                     type="button"
                     onClick={() => setShowApiKey(!showApiKey)}
-                    className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-500 hover:text-slate-300 focus:outline-none cursor-pointer"
+                    className={`absolute inset-y-0 ${language === 'ar' ? 'left-0 pl-3.5' : 'right-0 pr-3.5'} flex items-center text-slate-500 hover:text-slate-300 focus:outline-none cursor-pointer`}
                   >
                     {showApiKey ? <EyeOff className="w-4.5 h-4.5" /> : <Eye className="w-4.5 h-4.5" />}
                   </button>
                   <input
                     type={showApiKey ? 'text' : 'password'}
-                    placeholder="أدخل مفتاح ترخيص الخادم"
-                    className="w-full bg-[#070b13] border border-slate-800 rounded-xl py-3 pr-4 pl-12 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 text-right text-ltr font-mono"
+                    placeholder={language === 'ar' ? 'أدخل مفتاح ترخيص الخادم' : 'Enter server authorization key'}
+                    className={`w-full bg-[#070b13] border border-slate-800 rounded-xl py-3 pr-4 pl-12 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 text-ltr font-mono ${
+                      language === 'ar' ? 'text-right' : 'text-left'
+                    }`}
                     value={apiKey}
                     onChange={(e) => setApiKey(e.target.value)}
                   />
                 </div>
-                <span className="text-[10px] text-slate-500 mt-1.5 block">يتم تعتيم المفتاح تلقائياً لحمايته. سيؤدي تركه أو إدخال نقاط التعتيم لحفظ المفتاح القديم المخزن مسبقاً دون تغييره.</span>
+                <span className="text-[10px] text-slate-500 mt-1.5 block">
+                  {language === 'ar' 
+                    ? 'يتم تعتيم المفتاح تلقائياً لحمايته. سيؤدي تركه أو إدخال نقاط التعتيم لحفظ المفتاح القديم المخزن مسبقاً دون تغييره.' 
+                    : 'The key is automatically masked for security. Leaving it unchanged will keep the stored value.'}
+                </span>
               </div>
 
-              <div className="pt-4 border-t border-slate-900 flex items-center justify-end">
+              <div className={`pt-4 border-t border-slate-900 flex items-center ${language === 'ar' ? 'justify-end' : 'justify-end'}`}>
                 <button
                   type="submit"
                   disabled={submitting}
                   className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold py-3 px-6 rounded-xl transition duration-200 glow-primary border border-indigo-500/20 flex items-center gap-2 cursor-pointer"
                 >
                   <Save className="w-4 h-4" />
-                  <span>حفظ إعدادات الخوادم والـ API</span>
+                  <span>{t('saveSettingsBtn')}</span>
                 </button>
               </div>
             </form>
@@ -371,17 +426,21 @@ export default function SettingsPage() {
               <form onSubmit={handleAddPricePlan} className="glass-panel p-6 rounded-2xl border-slate-800/80 space-y-4">
                 <h3 className="font-bold text-slate-200 text-sm flex items-center gap-2 border-b border-slate-900 pb-3">
                   <Plus className="w-4.5 h-4.5 text-indigo-400" />
-                  <span>إضافة باقة أسعار وتفعيل جديدة للموزعين</span>
+                  <span>{language === 'ar' ? 'إضافة باقة أسعار وتفعيل جديدة للموزعين' : 'Add New Pricing & Activation Plan'}</span>
                 </h3>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
-                  {/* Plan Name in Arabic */}
+                  {/* Plan Name */}
                   <div>
-                    <label className="block text-slate-300 text-xs font-semibold mb-2">اسم الباقة بالعربية</label>
+                    <label className="block text-slate-300 text-xs font-semibold mb-2">
+                      {language === 'ar' ? 'اسم الباقة (مثال: أسبوعين)' : 'Plan Label (e.g. 2 Weeks)'}
+                    </label>
                     <input
                       type="text"
-                      placeholder="مثال: أسبوعين"
-                      className="w-full bg-[#070b13] border border-slate-800 rounded-xl py-3 px-4 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 text-right"
+                      placeholder={language === 'ar' ? 'مثال: أسبوعين' : 'e.g. 2 Weeks'}
+                      className={`w-full bg-[#070b13] border border-slate-800 rounded-xl py-3 px-4 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 ${
+                        language === 'ar' ? 'text-right' : 'text-left'
+                      }`}
                       value={newLabel}
                       onChange={(e) => setNewLabel(e.target.value)}
                     />
@@ -389,47 +448,65 @@ export default function SettingsPage() {
 
                   {/* Plan duration in English */}
                   <div>
-                    <label className="block text-slate-300 text-xs font-semibold mb-2">مدة التفعيل (بالإنكليزية للـ API)</label>
+                    <label className="block text-slate-300 text-xs font-semibold mb-2">
+                      {language === 'ar' ? 'مدة التفعيل (بالإنكليزية للـ API)' : 'Activation Duration (English API)'}
+                    </label>
                     <input
                       type="text"
-                      placeholder="مثال: 2 weeks, 2 years"
-                      className="w-full bg-[#070b13] border border-slate-800 rounded-xl py-3 px-4 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 text-right text-ltr"
+                      placeholder="e.g. 2 weeks, 2 years"
+                      className={`w-full bg-[#070b13] border border-slate-800 rounded-xl py-3 px-4 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 text-ltr ${
+                        language === 'ar' ? 'text-right' : 'text-left'
+                      }`}
                       value={newDuration}
                       onChange={(e) => setNewDuration(e.target.value)}
                     />
                   </div>
 
-                  {/* Default price in SAR */}
+                  {/* Default price */}
                   <div>
-                    <label className="block text-slate-300 text-xs font-semibold mb-2">سعر البيع الافتراضي للموزعين (ر.س)</label>
+                    <label className="block text-slate-300 text-xs font-semibold mb-2">
+                      {language === 'ar' ? 'السعر الافتراضي للموزعين (ر.س)' : 'Default Seller Price (SAR)'}
+                    </label>
                     <div className="flex gap-2">
                       <input
                         type="number"
                         min={0}
-                        placeholder="مثال: 120"
-                        className="w-full bg-[#070b13] border border-slate-800 rounded-xl py-3 px-4 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 text-right font-bold"
+                        placeholder={language === 'ar' ? 'مثال: 120' : 'e.g. 120'}
+                        className={`w-full bg-[#070b13] border border-slate-800 rounded-xl py-3 px-4 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 font-bold ${
+                          language === 'ar' ? 'text-right' : 'text-left'
+                        }`}
                         value={newPrice || ''}
                         onChange={(e) => setNewPrice(parseFloat(e.target.value) || 0)}
                       />
                       <button
                         type="submit"
-                        className="bg-indigo-650 hover:bg-indigo-550 text-white text-xs font-bold py-3 px-5 rounded-xl transition cursor-pointer flex items-center gap-1.5 shrink-0"
+                        className="bg-[#1b223c] hover:bg-[#252e50] text-indigo-400 border border-indigo-500/20 text-xs font-bold py-3 px-5 rounded-xl transition cursor-pointer flex items-center gap-1.5 shrink-0"
                       >
                         <Plus className="w-4 h-4" />
-                        <span>إضافة الباقة</span>
+                        <span>{language === 'ar' ? 'إضافة' : 'Add'}</span>
                       </button>
                     </div>
                   </div>
                 </div>
-                <span className="text-[10px] text-slate-500 mt-1 block">يجب تدوين مدة التفعيل باللغة الإنكليزية بالشكل المطابق لمدخلات الـ API (مثل: 2 hours, 1 day, 3 days, 1 week, 1 month, 3 months, 6 months, 1 year).</span>
+                <span className="text-[10px] text-slate-500 mt-1 block">
+                  {language === 'ar' 
+                    ? 'يجب تدوين مدة التفعيل باللغة الإنكليزية بالشكل المطابق لمدخلات الـ API (مثل: 2 hours, 1 day, 3 days, 1 week, 1 month, 3 months, 6 months, 1 year).' 
+                    : 'The duration value must follow standard API strings (e.g. 2 hours, 1 day, 3 days, 1 week, 1 month, 3 months, 6 months, 1 year).'}
+                </span>
               </form>
 
               {/* Price Plans Table list */}
               <div className="glass-panel rounded-2xl border-slate-800/80 overflow-hidden">
                 <div className="p-4 bg-slate-900/10 border-b border-slate-850 flex items-center justify-between">
                   <div>
-                    <h3 className="font-bold text-slate-200 text-sm">خطط الأسعار المسجلة في النظام حالياً</h3>
-                    <p className="text-[11px] text-slate-400 mt-0.5">يمكنك تعديل القائمة وحذف ما لا ترغب به، ثم اضغط حفظ الإعدادات لتطبيق التغيير النهائي.</p>
+                    <h3 className="font-bold text-slate-200 text-sm">
+                      {language === 'ar' ? 'خطط الأسعار المسجلة في النظام حالياً' : 'Pricing Plans Registered in System'}
+                    </h3>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      {language === 'ar' 
+                        ? 'يمكنك تعديل القائمة وحذف ما لا ترغب به، ثم اضغط حفظ الإعدادات لتطبيق التغيير النهائي.' 
+                        : 'Adjust or delete plans here, then click Save changes to save permanently.'}
+                    </p>
                   </div>
                   
                   {/* Save button for pricing plans change */}
@@ -439,23 +516,23 @@ export default function SettingsPage() {
                     className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold py-2 px-4 rounded-lg transition duration-200 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                   >
                     <Save className="w-4 h-4" />
-                    <span>حفظ القائمة والتعديلات</span>
+                    <span>{language === 'ar' ? 'حفظ التعديلات' : 'Save Changes'}</span>
                   </button>
                 </div>
 
                 {pricePlans.length === 0 ? (
                   <div className="p-16 text-center text-slate-500 text-xs">
-                    قائمة الأسعار فارغة تماماً! الرجاء إضافة باقة واحدة على الأقل.
+                    {language === 'ar' ? 'قائمة الأسعار فارغة تماماً! الرجاء إضافة باقة واحدة على الأقل.' : 'Price list is completely empty! Please add at least one plan.'}
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
-                    <table className="w-full text-right border-collapse text-xs">
+                    <table className={`w-full text-xs border-collapse ${language === 'ar' ? 'text-right' : 'text-left'}`}>
                       <thead>
                         <tr className="border-b border-slate-850 text-slate-400">
-                          <th className="p-4 font-semibold">باقة الاشتراك (اسم العرض)</th>
-                          <th className="p-4 font-semibold">مدة التفعيل الفنية</th>
-                          <th className="p-4 font-semibold">سعر البيع الافتراضي</th>
-                          <th className="p-4 font-semibold text-left">العمليات</th>
+                          <th className="p-4 font-semibold">{language === 'ar' ? 'باقة الاشتراك' : 'Subscription Plan'}</th>
+                          <th className="p-4 font-semibold">{language === 'ar' ? 'مدة التفعيل الفنية' : 'Activation Code / Duration'}</th>
+                          <th className="p-4 font-semibold">{language === 'ar' ? 'السعر الافتراضي' : 'Default Price'}</th>
+                          <th className={`p-4 font-semibold ${language === 'ar' ? 'text-left' : 'text-right'}`}>{language === 'ar' ? 'العمليات' : 'Actions'}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -463,12 +540,12 @@ export default function SettingsPage() {
                           <tr key={idx} className="border-b border-slate-900/40 hover:bg-slate-800/10 transition">
                             <td className="p-4 font-semibold text-slate-200">{plan.label}</td>
                             <td className="p-4 text-slate-400 font-mono">{plan.duration}</td>
-                            <td className="p-4 font-bold text-emerald-400">{plan.price} ر.س</td>
-                            <td className="p-4 text-left">
+                            <td className="p-4 font-bold text-emerald-400">{plan.price}{currencySuffix}</td>
+                            <td className={`p-4 ${language === 'ar' ? 'text-left' : 'text-right'}`}>
                               <button
                                 onClick={() => handleDeletePricePlan(plan.duration)}
                                 className="p-2 bg-red-500/5 hover:bg-red-500/10 text-red-400 border border-red-500/20 rounded-lg transition cursor-pointer"
-                                title="حذف الباقة"
+                                title={language === 'ar' ? 'حذف الباقة' : 'Delete Plan'}
                               >
                                 <Trash2 className="w-4 h-4" />
                               </button>
@@ -488,20 +565,22 @@ export default function SettingsPage() {
             <form onSubmit={handleChangePassword} className="glass-panel p-6 md:p-8 rounded-2xl border-slate-800/80 space-y-6">
               <h3 className="font-bold text-slate-200 text-sm flex items-center gap-2 border-b border-slate-900 pb-3">
                 <Shield className="w-4.5 h-4.5 text-indigo-400" />
-                <span>تحديث معلومات حماية خادم الإدارة (تغيير كلمة المرور)</span>
+                <span>{language === 'ar' ? 'تحديث معلومات حماية المسؤول (تغيير كلمة المرور)' : 'Update Admin Credentials (Change Password)'}</span>
               </h3>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                 {/* Old Password */}
                 <div>
-                  <label className="block text-slate-300 text-xs font-semibold mb-2">كلمة المرور الحالية</label>
+                  <label className="block text-slate-300 text-xs font-semibold mb-2">{t('currentPassword')}</label>
                   <div className="relative">
-                    <Lock className="absolute inset-y-0 right-3.5 w-4 h-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
+                    <Lock className={`absolute inset-y-0 ${language === 'ar' ? 'right-3.5' : 'left-3.5'} w-4 h-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none`} />
                     <input
                       type="password"
                       required
-                      placeholder="أدخل كلمة المرور الحالية"
-                      className="w-full bg-[#070b13] border border-slate-800 rounded-xl py-3 pr-10 pl-4 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 text-right"
+                      placeholder={language === 'ar' ? 'أدخل كلمة المرور الحالية' : 'Enter current password'}
+                      className={`w-full bg-[#070b13] border border-slate-800 rounded-xl py-3 ${
+                        language === 'ar' ? 'pr-10 pl-4 text-right' : 'pl-10 pr-4 text-left'
+                      } text-xs text-slate-200 focus:outline-none focus:border-indigo-500`}
                       value={oldPassword}
                       onChange={(e) => setOldPassword(e.target.value)}
                     />
@@ -510,14 +589,16 @@ export default function SettingsPage() {
 
                 {/* New Password */}
                 <div>
-                  <label className="block text-slate-300 text-xs font-semibold mb-2">كلمة المرور الجديدة</label>
+                  <label className="block text-slate-300 text-xs font-semibold mb-2">{t('newPassword')}</label>
                   <div className="relative">
-                    <Lock className="absolute inset-y-0 right-3.5 w-4 h-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
+                    <Lock className={`absolute inset-y-0 ${language === 'ar' ? 'right-3.5' : 'left-3.5'} w-4 h-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none`} />
                     <input
                       type="password"
                       required
-                      placeholder="كلمة مرور قوية (6 رموز على الأقل)"
-                      className="w-full bg-[#070b13] border border-slate-800 rounded-xl py-3 pr-10 pl-4 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 text-right"
+                      placeholder={language === 'ar' ? 'كلمة مرور جديدة' : 'New password'}
+                      className={`w-full bg-[#070b13] border border-slate-800 rounded-xl py-3 ${
+                        language === 'ar' ? 'pr-10 pl-4 text-right' : 'pl-10 pr-4 text-left'
+                      } text-xs text-slate-200 focus:outline-none focus:border-indigo-500`}
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
                     />
@@ -526,14 +607,16 @@ export default function SettingsPage() {
 
                 {/* Confirm Password */}
                 <div>
-                  <label className="block text-slate-300 text-xs font-semibold mb-2">تأكيد كلمة المرور الجديدة</label>
+                  <label className="block text-slate-300 text-xs font-semibold mb-2">{t('confirmNewPassword')}</label>
                   <div className="relative">
-                    <Lock className="absolute inset-y-0 right-3.5 w-4 h-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
+                    <Lock className={`absolute inset-y-0 ${language === 'ar' ? 'right-3.5' : 'left-3.5'} w-4 h-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none`} />
                     <input
                       type="password"
                       required
-                      placeholder="أعد كتابة كلمة المرور الجديدة"
-                      className="w-full bg-[#070b13] border border-slate-800 rounded-xl py-3 pr-10 pl-4 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 text-right"
+                      placeholder={language === 'ar' ? 'أعد كتابة كلمة المرور' : 'Confirm password'}
+                      className={`w-full bg-[#070b13] border border-slate-800 rounded-xl py-3 ${
+                        language === 'ar' ? 'pr-10 pl-4 text-right' : 'pl-10 pr-4 text-left'
+                      } text-xs text-slate-200 focus:outline-none focus:border-indigo-500`}
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                     />
@@ -541,14 +624,14 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-slate-900 flex items-center justify-end">
+              <div className={`pt-4 border-t border-slate-900 flex items-center ${language === 'ar' ? 'justify-end' : 'justify-end'}`}>
                 <button
                   type="submit"
                   disabled={submitting}
                   className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold py-3 px-6 rounded-xl transition duration-200 glow-primary border border-indigo-500/20 flex items-center gap-2 cursor-pointer"
                 >
                   <Lock className="w-4 h-4" />
-                  <span>تحديث كلمة مرور المسؤول</span>
+                  <span>{t('changePasswordBtn')}</span>
                 </button>
               </div>
             </form>

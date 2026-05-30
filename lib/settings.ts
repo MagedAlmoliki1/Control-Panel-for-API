@@ -1,9 +1,8 @@
 // lib/settings.ts
+// Settings are stored in the `SystemSetting` database table (key="singleton")
+// instead of the filesystem so they work on Vercel's read-only environment.
 
-import fs from 'fs';
-import path from 'path';
-
-const SETTINGS_PATH = path.join(process.cwd(), 'prisma', 'system_settings.json');
+import { prisma } from './db';
 
 export interface PricePlan {
   label: string;
@@ -45,20 +44,22 @@ const defaultSettings: SystemSettings = {
   expiryThresholdDays: 3,
 };
 
-export function getSystemSettings(): SystemSettings {
+export async function getSystemSettings(): Promise<SystemSettings> {
   try {
-    if (!fs.existsSync(SETTINGS_PATH)) {
-      saveSystemSettings(defaultSettings);
+    const row = await prisma.systemSetting.findUnique({ where: { id: 'singleton' } });
+    if (!row) {
+      await saveSystemSettings(defaultSettings);
       return defaultSettings;
     }
-    const content = fs.readFileSync(SETTINGS_PATH, 'utf-8');
-    const parsed = JSON.parse(content);
-    
+    const parsed = JSON.parse(row.data);
     // Deep merge to ensure all properties exist
     return {
       api: { ...defaultSettings.api, ...parsed.api },
       pricePlans: Array.isArray(parsed.pricePlans) ? parsed.pricePlans : defaultSettings.pricePlans,
-      expiryThresholdDays: typeof parsed.expiryThresholdDays === 'number' ? parsed.expiryThresholdDays : defaultSettings.expiryThresholdDays,
+      expiryThresholdDays:
+        typeof parsed.expiryThresholdDays === 'number'
+          ? parsed.expiryThresholdDays
+          : defaultSettings.expiryThresholdDays,
     };
   } catch (err) {
     console.error('Failed to read system settings, using defaults:', err);
@@ -66,10 +67,13 @@ export function getSystemSettings(): SystemSettings {
   }
 }
 
-export function saveSystemSettings(settings: SystemSettings): boolean {
+export async function saveSystemSettings(settings: SystemSettings): Promise<boolean> {
   try {
-    // Format JSON with 2 spaces indent
-    fs.writeFileSync(SETTINGS_PATH, JSON.stringify(settings, null, 2), 'utf-8');
+    await prisma.systemSetting.upsert({
+      where: { id: 'singleton' },
+      update: { data: JSON.stringify(settings) },
+      create: { id: 'singleton', data: JSON.stringify(settings) },
+    });
     return true;
   } catch (err) {
     console.error('Failed to write system settings:', err);

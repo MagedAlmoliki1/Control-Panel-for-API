@@ -1,22 +1,9 @@
 // lib/api/mockProvider.ts
+// Mock data is now stored in MockUser + MockLog tables in the database
+// instead of the filesystem, so it works on Vercel's read-only environment.
 
-import fs from 'fs';
-import path from 'path';
+import { prisma } from '../db';
 import { SubscriptionProvider, ExternalUser, ExternalLog, ExternalStatus } from './provider';
-
-const STORE_PATH = path.join(process.cwd(), 'prisma', 'mock_api_store.json');
-
-interface MockStore {
-  users: Array<{
-    username: string;
-    base_id: string;
-    duration: string;
-    status: 'active' | 'expired' | 'suspended';
-    createdAt: string;
-    endTime: string;
-  }>;
-  logs: ExternalLog[];
-}
 
 function getDurationDate(duration: string, startDate = new Date()): Date {
   const date = new Date(startDate);
@@ -46,192 +33,192 @@ function getDurationDate(duration: string, startDate = new Date()): Date {
       date.setFullYear(date.getFullYear() + 1);
       break;
     default:
-      // Default fallback 1 month
       date.setMonth(date.getMonth() + 1);
   }
   return date;
 }
 
+async function ensureSeeded() {
+  const count = await prisma.mockUser.count();
+  if (count > 0) return;
+
+  // Seed initial mock data on first run
+  await prisma.mockUser.createMany({
+    data: [
+      {
+        username: 'test_user_1',
+        baseId: 'base_100',
+        duration: '1 month',
+        status: 'active',
+        createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+        endTime: getDurationDate('1 month', new Date(Date.now() - 5 * 24 * 60 * 60 * 1000)).toISOString(),
+      },
+      {
+        username: 'test_user_2',
+        baseId: 'base_101',
+        duration: '3 days',
+        status: 'expired',
+        createdAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
+        endTime: getDurationDate('3 days', new Date(Date.now() - 4 * 24 * 60 * 60 * 1000)).toISOString(),
+      },
+    ],
+  });
+
+  await prisma.mockLog.createMany({
+    data: [
+      {
+        userId: 'test_user_1',
+        loginTime: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+        ip: '192.168.1.10',
+        durationSeconds: 3600,
+      },
+      {
+        userId: 'test_user_1',
+        loginTime: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+        ip: '192.168.1.15',
+        durationSeconds: 7200,
+      },
+      {
+        userId: 'test_user_2',
+        loginTime: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+        ip: '82.165.44.12',
+        durationSeconds: 1200,
+      },
+    ],
+  });
+}
+
 export class MockProvider implements SubscriptionProvider {
-  private initStore(): MockStore {
-    if (!fs.existsSync(STORE_PATH)) {
-      const initial: MockStore = {
-        users: [
-          {
-            username: 'test_user_1',
-            base_id: 'base_100',
-            duration: '1 month',
-            status: 'active',
-            createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-            endTime: getDurationDate('1 month', new Date(Date.now() - 5 * 24 * 60 * 60 * 1000)).toISOString()
-          },
-          {
-            username: 'test_user_2',
-            base_id: 'base_101',
-            duration: '3 days',
-            status: 'expired',
-            createdAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
-            endTime: getDurationDate('3 days', new Date(Date.now() - 4 * 24 * 60 * 60 * 1000)).toISOString()
-          }
-        ],
-        logs: [
-          {
-            user_id: 'test_user_1',
-            login_time: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-            ip: '192.168.1.10',
-            duration_seconds: 3600
-          },
-          {
-            user_id: 'test_user_1',
-            login_time: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-            ip: '192.168.1.15',
-            duration_seconds: 7200
-          },
-          {
-            user_id: 'test_user_2',
-            login_time: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-            ip: '82.165.44.12',
-            duration_seconds: 1200
-          }
-        ]
-      };
-      fs.writeFileSync(STORE_PATH, JSON.stringify(initial, null, 2), 'utf-8');
-      return initial;
-    }
-    try {
-      const content = fs.readFileSync(STORE_PATH, 'utf-8');
-      return JSON.parse(content);
-    } catch {
-      return { users: [], logs: [] };
-    }
-  }
-
-  private saveStore(store: MockStore) {
-    fs.writeFileSync(STORE_PATH, JSON.stringify(store, null, 2), 'utf-8');
-  }
-
   async addUser(input: { base_id: string; username: string; duration: string }): Promise<{ ok: boolean; raw?: unknown }> {
-    const store = this.initStore();
-    const existing = store.users.find(u => u.username === input.username);
+    await ensureSeeded();
     const now = new Date();
     const endTime = getDurationDate(input.duration, now);
 
-    if (existing) {
-      existing.base_id = input.base_id;
-      existing.duration = input.duration;
-      existing.status = 'active';
-      existing.createdAt = now.toISOString();
-      existing.endTime = endTime.toISOString();
-    } else {
-      store.users.push({
-        username: input.username,
-        base_id: input.base_id,
+    await prisma.mockUser.upsert({
+      where: { username: input.username },
+      update: {
+        baseId: input.base_id,
         duration: input.duration,
         status: 'active',
         createdAt: now.toISOString(),
-        endTime: endTime.toISOString()
-      });
-    }
-
-    // Add a quick login log for the new user activation
-    const ips = ['197.34.200.12', '188.45.10.82', '82.165.44.12', '5.100.92.15'];
-    const randomIp = ips[Math.floor(Math.random() * ips.length)];
-    store.logs.push({
-      user_id: input.username,
-      login_time: now.toISOString(),
-      ip: randomIp,
-      duration_seconds: 180 // 3 minutes test
+        endTime: endTime.toISOString(),
+      },
+      create: {
+        username: input.username,
+        baseId: input.base_id,
+        duration: input.duration,
+        status: 'active',
+        createdAt: now.toISOString(),
+        endTime: endTime.toISOString(),
+      },
     });
 
-    this.saveStore(store);
+    const ips = ['197.34.200.12', '188.45.10.82', '82.165.44.12', '5.100.92.15'];
+    const randomIp = ips[Math.floor(Math.random() * ips.length)];
+    await prisma.mockLog.create({
+      data: {
+        userId: input.username,
+        loginTime: now.toISOString(),
+        ip: randomIp,
+        durationSeconds: 180,
+      },
+    });
+
     return { ok: true, raw: { mock_success: true, time: now.toISOString() } };
   }
 
   async removeUser(input: { username: string }): Promise<{ ok: boolean }> {
-    const store = this.initStore();
-    const existing = store.users.find(u => u.username === input.username);
-    if (existing) {
-      existing.status = 'suspended';
-      this.saveStore(store);
-      return { ok: true };
-    }
-    return { ok: false };
+    await ensureSeeded();
+    const existing = await prisma.mockUser.findUnique({ where: { username: input.username } });
+    if (!existing) return { ok: false };
+
+    await prisma.mockUser.update({
+      where: { username: input.username },
+      data: { status: 'suspended' },
+    });
+    return { ok: true };
   }
 
   async listUsers(): Promise<ExternalUser[]> {
-    const store = this.initStore();
-    return store.users.map(u => ({
+    await ensureSeeded();
+    const users = await prisma.mockUser.findMany();
+    return users.map((u) => ({
       username: u.username,
-      base_id: u.base_id,
+      base_id: u.baseId,
       duration: u.duration,
-      status: u.status,
-      createdAt: u.createdAt
+      status: u.status as 'active' | 'expired' | 'suspended',
+      createdAt: u.createdAt,
     }));
   }
 
   async getLogs(input: { user_id: string; date_from?: string; date_to?: string }): Promise<ExternalLog[]> {
-    const store = this.initStore();
-    let results = store.logs;
+    await ensureSeeded();
+    const logs = await prisma.mockLog.findMany();
 
-    if (input.user_id) {
-      results = results.filter(l => l.user_id.toLowerCase().includes(input.user_id.toLowerCase()));
-    }
+    let results = logs.filter((l) =>
+      l.userId.toLowerCase().includes(input.user_id.toLowerCase())
+    );
 
     if (input.date_from) {
       const from = new Date(input.date_from).getTime();
-      results = results.filter(l => new Date(l.login_time).getTime() >= from);
+      results = results.filter((l) => new Date(l.loginTime).getTime() >= from);
     }
 
     if (input.date_to) {
       const to = new Date(input.date_to).getTime();
-      results = results.filter(l => new Date(l.login_time).getTime() <= to);
+      results = results.filter((l) => new Date(l.loginTime).getTime() <= to);
     }
 
-    return results;
+    return results.map((l) => ({
+      user_id: l.userId,
+      login_time: l.loginTime,
+      ip: l.ip,
+      duration_seconds: l.durationSeconds,
+    }));
   }
 
   async getUserStatus(input: { user_id: string }): Promise<ExternalStatus> {
-    const store = this.initStore();
-    const u = store.users.find(x => x.username === input.user_id);
-    if (!u) {
-      throw new Error('User not found on mock provider');
-    }
-    
-    // Check if subscription has expired in the mock store
+    await ensureSeeded();
+    const u = await prisma.mockUser.findUnique({ where: { username: input.user_id } });
+    if (!u) throw new Error('User not found on mock provider');
+
     const now = new Date();
     const isExpired = new Date(u.endTime).getTime() < now.getTime();
     const finalStatus = isExpired && u.status === 'active' ? 'expired' : u.status;
 
     if (finalStatus !== u.status) {
-      u.status = finalStatus as 'active' | 'expired' | 'suspended';
-      this.saveStore(store);
+      await prisma.mockUser.update({
+        where: { username: u.username },
+        data: { status: finalStatus },
+      });
     }
 
     return {
       username: u.username,
-      status: u.status,
-      end_time: u.endTime
+      status: finalStatus as 'active' | 'expired' | 'suspended',
+      end_time: u.endTime,
     };
   }
 
   async renewUser(input: { username: string; duration: string }): Promise<{ ok: boolean }> {
-    const store = this.initStore();
-    const u = store.users.find(x => x.username === input.username);
-    if (!u) {
-      return { ok: false };
-    }
+    await ensureSeeded();
+    const u = await prisma.mockUser.findUnique({ where: { username: input.username } });
+    if (!u) return { ok: false };
 
     const now = new Date();
     const currentEnd = new Date(u.endTime);
-    // If active and not expired, extend from the current end date. Otherwise, start from now.
     const startFrom = currentEnd.getTime() > now.getTime() && u.status === 'active' ? currentEnd : now;
     const newEnd = getDurationDate(input.duration, startFrom);
 
-    u.duration = input.duration;
-    u.status = 'active';
-    u.endTime = newEnd.toISOString();
+    await prisma.mockUser.update({
+      where: { username: input.username },
+      data: {
+        duration: input.duration,
+        status: 'active',
+        endTime: newEnd.toISOString(),
+      },
+    });
 
-    this.saveStore(store);
     return { ok: true };
   }
 }

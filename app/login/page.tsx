@@ -4,7 +4,8 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { KeyRound, User, Lock, ArrowLeftRight } from 'lucide-react';
+import { KeyRound, User, Lock, ArrowLeftRight, Languages } from 'lucide-react';
+import { useLanguage } from '@/lib/LanguageContext';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -13,6 +14,8 @@ export default function LoginPage() {
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  
+  const { language, setLanguage, t } = useLanguage();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,14 +32,14 @@ export default function LoginPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || 'فشل تسجيل الدخول');
+        throw new Error(data.error || t('loginError'));
       }
 
       // Successful login
       router.push('/dashboard');
       router.refresh();
     } catch (err: any) {
-      setError(err.message || 'حدث خطأ في الاتصال بالخادم');
+      setError(err.message || t('serverError'));
     } finally {
       setLoading(false);
     }
@@ -44,6 +47,17 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-[#070b13] flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Language Toggle at top corner */}
+      <div className={`absolute top-4 ${language === 'ar' ? 'left-4' : 'right-4'} z-25`}>
+        <button
+          onClick={() => setLanguage(language === 'ar' ? 'en' : 'ar')}
+          className="bg-[#0e1322] text-slate-400 border border-slate-800/80 px-3.5 py-1.5 rounded-xl hover:text-slate-200 transition cursor-pointer text-xs flex items-center gap-1.5 shadow-md shadow-black/20"
+        >
+          <Languages className="w-4 h-4" />
+          <span>{language === 'ar' ? 'English' : 'العربية'}</span>
+        </button>
+      </div>
+
       {/* Background gradients */}
       <div className="absolute top-[-20%] left-[-20%] w-[60%] h-[60%] rounded-full bg-indigo-900/10 blur-[120px] pointer-events-none" />
       <div className="absolute bottom-[-20%] right-[-20%] w-[60%] h-[60%] rounded-full bg-emerald-950/10 blur-[120px] pointer-events-none" />
@@ -53,8 +67,8 @@ export default function LoginPage() {
           <div className="inline-flex items-center justify-center p-4 bg-indigo-500/10 rounded-2xl mb-4 border border-indigo-500/20 text-indigo-400">
             <KeyRound className="w-8 h-8" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-100 mb-2">تسجيل الدخول للنظام</h1>
-          <p className="text-slate-400 text-sm">لوحة مبيعات واشتراكات البرامج والأنظمة</p>
+          <h1 className="text-2xl font-bold text-slate-100 mb-2">{t('loginTitle')}</h1>
+          <p className="text-slate-400 text-sm">{t('loginSubtitle')}</p>
         </div>
 
         {error && (
@@ -65,16 +79,18 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block text-slate-300 text-sm font-medium mb-2">اسم المستخدم</label>
+            <label className="block text-slate-300 text-sm font-medium mb-2">{t('usernameLabel')}</label>
             <div className="relative">
-              <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-slate-500">
+              <div className={`absolute inset-y-0 ${language === 'ar' ? 'right-0 pr-4' : 'left-0 pl-4'} flex items-center pointer-events-none text-slate-500`}>
                 <User className="w-5 h-5" />
               </div>
               <input
                 type="text"
                 required
-                placeholder="أدخل اسم المستخدم (مثال: admin)"
-                className="w-full bg-[#0a0f1d] border border-slate-800 rounded-xl py-3 pr-11 pl-4 text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-right"
+                placeholder={t('usernamePlaceholder')}
+                className={`w-full bg-[#0a0f1d] border border-slate-800 rounded-xl py-3 ${
+                  language === 'ar' ? 'pr-11 pl-4 text-right' : 'pl-11 pr-4 text-left'
+                } text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500`}
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
               />
@@ -82,16 +98,18 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <label className="block text-slate-300 text-sm font-medium mb-2">كلمة المرور</label>
+            <label className="block text-slate-300 text-sm font-medium mb-2">{t('passwordLabel')}</label>
             <div className="relative">
-              <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-slate-500">
+              <div className={`absolute inset-y-0 ${language === 'ar' ? 'right-0 pr-4' : 'left-0 pl-4'} flex items-center pointer-events-none text-slate-500`}>
                 <Lock className="w-5 h-5" />
               </div>
               <input
                 type="password"
                 required
-                placeholder="أدخل كلمة المرور الخاصة بك"
-                className="w-full bg-[#0a0f1d] border border-slate-800 rounded-xl py-3 pr-11 pl-4 text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-right"
+                placeholder={t('passwordPlaceholder')}
+                className={`w-full bg-[#0a0f1d] border border-slate-800 rounded-xl py-3 ${
+                  language === 'ar' ? 'pr-11 pl-4 text-right' : 'pl-11 pr-4 text-left'
+                } text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500`}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
@@ -106,7 +124,7 @@ export default function LoginPage() {
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
               />
-              تذكرني لمدة 7 أيام
+              {t('rememberMe')}
             </label>
           </div>
 
@@ -118,7 +136,7 @@ export default function LoginPage() {
             {loading ? (
               <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
             ) : (
-              'تسجيل الدخول'
+              t('loginBtn')
             )}
           </button>
         </form>
@@ -126,7 +144,7 @@ export default function LoginPage() {
         <div className="mt-8 pt-6 border-t border-slate-900 text-center text-xs text-slate-500">
           <p className="flex items-center justify-center gap-1.5 text-[11px]">
             <ArrowLeftRight className="w-3.5 h-3.5" />
-            نظام تفعيل وإدارة الاشتراكات المستقل
+            {t('independentSystem')}
           </p>
         </div>
       </div>

@@ -77,3 +77,28 @@ model AuditLog {
   changedData String?  // JSON serialized string
   createdAt   DateTime @default(now())
 }
+
+// Stores system settings (replaces prisma/system_settings.json)
+model SystemSetting {
+  id    String @id @default("singleton")
+  data  String // JSON blob of the full SystemSettings object
+}
+
+// Mock API store — users (replaces prisma/mock_api_store.json)
+model MockUser {
+  username  String   @id
+  baseId    String
+  duration  String
+  status    String   @default("active") // "active" | "expired" | "suspended"
+  createdAt String
+  endTime   String
+}
+
+// Mock API store — logs (replaces prisma/mock_api_store.json)
+model MockLog {
+  id              String @id @default(uuid())
+  userId          String
+  loginTime       String
+  ip              String
+  durationSeconds Int
+}

@@ -21,6 +21,7 @@ import {
   CheckCircle,
   XCircle,
 } from 'lucide-react';
+import { useLanguage } from '@/lib/LanguageContext';
 
 interface AllowedPrice {
   duration: string;
@@ -61,17 +62,18 @@ interface CustomersManagerProps {
 
 export default function CustomersManager({ sessionUser, sellers }: CustomersManagerProps) {
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const { language, t } = useLanguage();
   
   // Dynamic duration and price configurations
   const [durationOptions, setDurationOptions] = useState([
-    { label: 'ساعتين', value: '2 hours' },
-    { label: 'يوم واحد', value: '1 day' },
-    { label: '3 أيام', value: '3 days' },
-    { label: 'أسبوع واحد', value: '1 week' },
-    { label: 'شهر واحد', value: '1 month' },
-    { label: '3 أشهر', value: '3 months' },
-    { label: '6 أشهر', value: '6 months' },
-    { label: 'سنة واحدة', value: '1 year' },
+    { label: language === 'ar' ? 'ساعتين' : '2 Hours', value: '2 hours' },
+    { label: language === 'ar' ? 'يوم واحد' : '1 Day', value: '1 day' },
+    { label: language === 'ar' ? '3 أيام' : '3 Days', value: '3 days' },
+    { label: language === 'ar' ? 'أسبوع واحد' : '1 Week', value: '1 week' },
+    { label: language === 'ar' ? 'شهر واحد' : '1 Month', value: '1 month' },
+    { label: language === 'ar' ? '3 أشهر' : '3 Months', value: '3 months' },
+    { label: language === 'ar' ? '6 أشهر' : '6 Months', value: '6 months' },
+    { label: language === 'ar' ? 'سنة واحدة' : '1 Year', value: '1 year' },
   ]);
 
   const [defaultPrices, setDefaultPrices] = useState<Record<string, number>>({
@@ -128,6 +130,20 @@ export default function CustomersManager({ sessionUser, sellers }: CustomersMana
   const [customerLogs, setCustomerLogs] = useState<any[]>([]);
   const [logsLoading, setLogsLoading] = useState(false);
 
+  // Update translation options when language changes
+  useEffect(() => {
+    setDurationOptions([
+      { label: language === 'ar' ? 'ساعتين' : '2 Hours', value: '2 hours' },
+      { label: language === 'ar' ? 'يوم واحد' : '1 Day', value: '1 day' },
+      { label: language === 'ar' ? '3 أيام' : '3 Days', value: '3 days' },
+      { label: language === 'ar' ? 'أسبوع واحد' : '1 Week', value: '1 week' },
+      { label: language === 'ar' ? 'شهر واحد' : '1 Month', value: '1 month' },
+      { label: language === 'ar' ? '3 أشهر' : '3 Months', value: '3 months' },
+      { label: language === 'ar' ? '6 أشهر' : '6 Months', value: '6 months' },
+      { label: language === 'ar' ? 'سنة واحدة' : '1 Year', value: '1 year' },
+    ]);
+  }, [language]);
+
   // Fetch all customers on load
   const fetchCustomers = async () => {
     setLoading(true);
@@ -139,11 +155,11 @@ export default function CustomersManager({ sessionUser, sellers }: CustomersMana
       if (sellerFilter) params.append('sellerId', sellerFilter);
 
       const res = await fetch(`/api/customers?${params.toString()}`);
-      if (!res.ok) throw new Error('فشل تحميل قائمة المشتركين');
+      if (!res.ok) throw new Error(language === 'ar' ? 'فشل تحميل قائمة المشتركين' : 'Failed to load subscribers list');
       const data = await res.json();
       setCustomers(data);
     } catch (err: any) {
-      setError(err.message || 'حدث خطأ غير متوقع');
+      setError(err.message || (language === 'ar' ? 'حدث خطأ غير متوقع' : 'Unexpected error occurred'));
     } finally {
       setLoading(false);
     }
@@ -183,7 +199,6 @@ export default function CustomersManager({ sessionUser, sellers }: CustomersMana
 
   // Handle Add Customer duration change to prefill price
   useEffect(() => {
-    // If seller, resolve from allowed prices. Otherwise, resolve from defaults.
     if (sessionUser.role === 'SELLER') {
       const plan = sessionUser.allowedPrices.find(p => p.duration === newDuration);
       if (plan) setNewAmount(plan.price);
@@ -234,10 +249,10 @@ export default function CustomersManager({ sessionUser, sellers }: CustomersMana
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'حدث خطأ أثناء التفعيل');
+      if (!res.ok) throw new Error(data.error || (language === 'ar' ? 'حدث خطأ أثناء التفعيل' : 'Error activating subscription'));
 
       setAddModalOpen(false);
-      triggerSuccess('تمت إضافة العميل وتفعيل الاشتراك بنجاح!');
+      triggerSuccess(language === 'ar' ? 'تمت إضافة العميل وتفعيل الاشتراك بنجاح!' : 'Customer added and subscription activated successfully!');
       // Reset fields
       setNewName('');
       setNewIdBase('');
@@ -245,7 +260,7 @@ export default function CustomersManager({ sessionUser, sellers }: CustomersMana
       setNewNotes('');
       fetchCustomers();
     } catch (err: any) {
-      triggerError(err.message || 'فشل التفعيل');
+      triggerError(err.message || (language === 'ar' ? 'فشل التفعيل' : 'Activation failed'));
     } finally {
       setLoading(false);
     }
@@ -270,14 +285,18 @@ export default function CustomersManager({ sessionUser, sellers }: CustomersMana
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'فشل التجديد');
+      if (!res.ok) throw new Error(data.error || (language === 'ar' ? 'فشل التجديد' : 'Failed to renew'));
 
       setRenewModalOpen(false);
-      triggerSuccess(`تم تجديد اشتراك العميل (${selectedCust.name}) بنجاح!`);
+      triggerSuccess(
+        language === 'ar' 
+          ? `تم تجديد اشتراك العميل (${selectedCust.name}) بنجاح!` 
+          : `Subscription for client (${selectedCust.name}) renewed successfully!`
+      );
       setRenewNotes('');
       fetchCustomers();
     } catch (err: any) {
-      triggerError(err.message || 'فشل التجديد');
+      triggerError(err.message || (language === 'ar' ? 'فشل التجديد' : 'Failed to renew'));
     } finally {
       setLoading(false);
     }
@@ -294,13 +313,17 @@ export default function CustomersManager({ sessionUser, sellers }: CustomersMana
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'فشل التعليق');
+      if (!res.ok) throw new Error(data.error || (language === 'ar' ? 'فشل التعليق' : 'Failed to suspend'));
 
       setSuspendModalOpen(false);
-      triggerSuccess(`تم تعليق حساب العميل (${selectedCust.name}) بنجاح.`);
+      triggerSuccess(
+        language === 'ar' 
+          ? `تم تعليق حساب العميل (${selectedCust.name}) بنجاح.` 
+          : `Customer account (${selectedCust.name}) suspended successfully.`
+      );
       fetchCustomers();
     } catch (err: any) {
-      triggerError(err.message || 'فشل التعليق');
+      triggerError(err.message || (language === 'ar' ? 'فشل التعليق' : 'Failed to suspend'));
     } finally {
       setLoading(false);
     }
@@ -324,13 +347,13 @@ export default function CustomersManager({ sessionUser, sellers }: CustomersMana
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'فشل التعديل');
+      if (!res.ok) throw new Error(data.error || (language === 'ar' ? 'فشل التعديل' : 'Failed to edit'));
 
       setEditModalOpen(false);
-      triggerSuccess('تم تعديل بيانات العميل بنجاح.');
+      triggerSuccess(language === 'ar' ? 'تم تعديل بيانات العميل بنجاح.' : 'Customer information updated successfully.');
       fetchCustomers();
     } catch (err: any) {
-      triggerError(err.message || 'فشل التعديل');
+      triggerError(err.message || (language === 'ar' ? 'فشل التعديل' : 'Failed to edit'));
     } finally {
       setLoading(false);
     }
@@ -338,7 +361,10 @@ export default function CustomersManager({ sessionUser, sellers }: CustomersMana
 
   // 5. Submit Delete Customer (Permanently)
   const handleDeleteCustomer = async (cust: Customer) => {
-    if (!confirm(`هل أنت متأكد من رغبتك في حذف العميل (${cust.name}) نهائياً؟ سيتم إلغاء تفعيله في النظام الخارجي أيضاً.`)) {
+    const confirmMsg = language === 'ar' 
+      ? `هل أنت متأكد من رغبتك في حذف العميل (${cust.name}) نهائياً؟ سيتم إلغاء تفعيله في النظام الخارجي أيضاً.`
+      : `Are you sure you want to permanently delete customer (${cust.name})? This will also de-activate them on the external API.`;
+    if (!confirm(confirmMsg)) {
       return;
     }
     setLoading(true);
@@ -350,13 +376,13 @@ export default function CustomersManager({ sessionUser, sellers }: CustomersMana
 
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error || 'فشل الحذف');
+        throw new Error(data.error || (language === 'ar' ? 'فشل الحذف' : 'Failed to delete'));
       }
 
-      triggerSuccess('تم حذف العميل نهائياً من النظام.');
+      triggerSuccess(language === 'ar' ? 'تم حذف العميل نهائياً من النظام.' : 'Customer permanently deleted from system.');
       fetchCustomers();
     } catch (err: any) {
-      triggerError(err.message || 'فشل الحذف');
+      triggerError(err.message || (language === 'ar' ? 'فشل الحذف' : 'Failed to delete'));
     } finally {
       setLoading(false);
     }
@@ -369,7 +395,6 @@ export default function CustomersManager({ sessionUser, sellers }: CustomersMana
     setLogsLoading(true);
     setCustomerLogs([]);
     try {
-      // MockProvider getLogs endpoint
       const res = await fetch(`/api/logs?userId=${cust.username}`);
       if (res.ok) {
         const data = await res.json();
@@ -387,8 +412,11 @@ export default function CustomersManager({ sessionUser, sellers }: CustomersMana
     ? durationOptions.filter(d => sessionUser.allowedPrices.some(p => p.duration === d.value))
     : durationOptions;
 
+  const currencySuffix = language === 'ar' ? ' ر.س' : ' SAR';
+  const formatNum = (val: number) => val.toLocaleString(language === 'ar' ? 'ar-SA' : 'en-US');
+
   return (
-    <div className="space-y-6">
+    <div className={`space-y-6 ${language === 'ar' ? 'text-right' : 'text-left'}`}>
       {/* Success/Error Toasts */}
       {success && (
         <div className="fixed top-5 left-5 z-50 bg-emerald-500 text-white font-semibold py-3 px-6 rounded-2xl shadow-xl flex items-center gap-3 animate-slide-in">
@@ -406,15 +434,17 @@ export default function CustomersManager({ sessionUser, sellers }: CustomersMana
       {/* Header bar and Add customer trigger */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-slate-100">إدارة العملاء والمشتركين</h2>
-          <p className="text-slate-400 text-xs mt-0.5">تفعيل، تجديد، وتعليق اشتراكات البرامج ومتابعة البيانات</p>
+          <h2 className="text-xl font-bold text-slate-100">{t('customersTitle')}</h2>
+          <p className="text-slate-400 text-xs mt-0.5">
+            {language === 'ar' ? 'تفعيل، تجديد، وتعليق اشتراكات البرامج ومتابعة البيانات' : 'Activate, renew, and suspend software subscriptions and monitor user data'}
+          </p>
         </div>
         <button
           onClick={() => setAddModalOpen(true)}
-          className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold py-3 px-5 rounded-xl transition duration-200 glow-primary border border-indigo-500/30 flex items-center gap-2 cursor-pointer"
+          className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold py-3 px-5 rounded-xl transition duration-200 glow-primary border border-indigo-500/20 flex items-center gap-2 cursor-pointer"
         >
           <UserPlus className="w-4.5 h-4.5" />
-          <span>تفعيل مشترك جديد</span>
+          <span>{t('addCustomerBtn')}</span>
         </button>
       </div>
 
@@ -422,13 +452,15 @@ export default function CustomersManager({ sessionUser, sellers }: CustomersMana
       <div className="glass-panel p-4 rounded-2xl border-slate-800/80 grid grid-cols-1 sm:grid-cols-4 gap-4 items-center">
         {/* Search Input */}
         <div className="relative sm:col-span-2">
-          <div className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-slate-500">
+          <div className={`absolute inset-y-0 ${language === 'ar' ? 'right-0 pr-3.5' : 'left-0 pl-3.5'} flex items-center pointer-events-none text-slate-500`}>
             <Search className="w-4.5 h-4.5" />
           </div>
           <input
             type="text"
-            placeholder="البحث بالاسم، اسم المستخدم، أو معرف القاعدة..."
-            className="w-full bg-[#0a0f1d]/60 border border-slate-800 rounded-xl py-2.5 pr-10 pl-4 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-right"
+            placeholder={t('searchPlaceholder')}
+            className={`w-full bg-[#0a0f1d]/60 border border-slate-800 rounded-xl py-2.5 ${
+              language === 'ar' ? 'pr-10 pl-4 text-right' : 'pl-10 pr-4 text-left'
+            } text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500`}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -436,33 +468,37 @@ export default function CustomersManager({ sessionUser, sellers }: CustomersMana
 
         {/* Status Filter */}
         <div className="relative">
-          <div className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-slate-500">
+          <div className={`absolute inset-y-0 ${language === 'ar' ? 'right-0 pr-3.5' : 'left-0 pl-3.5'} flex items-center pointer-events-none text-slate-500`}>
             <Filter className="w-4 h-4" />
           </div>
           <select
-            className="w-full bg-[#0a0f1d]/60 border border-slate-800 rounded-xl py-2.5 pr-10 pl-4 text-xs text-slate-300 focus:outline-none focus:border-indigo-500 text-right appearance-none cursor-pointer"
+            className={`w-full bg-[#0a0f1d]/60 border border-slate-800 rounded-xl py-2.5 px-4 ${
+              language === 'ar' ? 'pr-10 text-right' : 'pl-10 text-left'
+            } text-xs text-slate-300 focus:outline-none focus:border-indigo-500 appearance-none cursor-pointer`}
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
           >
-            <option value="">جميع الحالات</option>
-            <option value="ACTIVE">نشط</option>
-            <option value="EXPIRED">منتهي</option>
-            <option value="SUSPENDED">معلق</option>
+            <option value="">{t('allStatus')}</option>
+            <option value="ACTIVE">{t('activeStatus')}</option>
+            <option value="EXPIRED">{t('expiredStatus')}</option>
+            <option value="SUSPENDED">{t('suspendedStatus')}</option>
           </select>
         </div>
 
         {/* Seller Filter (Admin Only) */}
         {sessionUser.role === 'ADMIN' ? (
           <div className="relative">
-            <div className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-slate-500">
+            <div className={`absolute inset-y-0 ${language === 'ar' ? 'right-0 pr-3.5' : 'left-0 pl-3.5'} flex items-center pointer-events-none text-slate-500`}>
               <Filter className="w-4 h-4" />
             </div>
             <select
-              className="w-full bg-[#0a0f1d]/60 border border-slate-800 rounded-xl py-2.5 pr-10 pl-4 text-xs text-slate-300 focus:outline-none focus:border-indigo-500 text-right appearance-none cursor-pointer"
+              className={`w-full bg-[#0a0f1d]/60 border border-slate-800 rounded-xl py-2.5 px-4 ${
+                language === 'ar' ? 'pr-10 text-right' : 'pl-10 text-left'
+              } text-xs text-slate-300 focus:outline-none focus:border-indigo-500 appearance-none cursor-pointer`}
               value={sellerFilter}
               onChange={(e) => setSellerFilter(e.target.value)}
             >
-              <option value="">جميع الموزعين</option>
+              <option value="">{language === 'ar' ? 'جميع الموزعين' : 'All Sellers'}</option>
               {sellers.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}
@@ -471,8 +507,8 @@ export default function CustomersManager({ sessionUser, sellers }: CustomersMana
             </select>
           </div>
         ) : (
-          <div className="text-slate-500 text-xs px-2 text-left sm:text-right">
-            الموزع المسؤول: <strong className="text-slate-300">{sessionUser.name}</strong>
+          <div className={`text-slate-500 text-xs px-2 ${language === 'ar' ? 'text-right' : 'text-left'}`}>
+            {language === 'ar' ? 'الموزع المسؤول:' : 'Responsible Seller:'} <strong className="text-slate-300">{sessionUser.name}</strong>
           </div>
         )}
       </div>
@@ -482,25 +518,25 @@ export default function CustomersManager({ sessionUser, sellers }: CustomersMana
         {loading && customers.length === 0 ? (
           <div className="p-16 text-center text-slate-500 text-sm">
             <span className="w-8 h-8 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin inline-block mb-3" />
-            <p>جاري تحميل المشتركين وتحديث الحالات...</p>
+            <p>{language === 'ar' ? 'جاري تحميل المشتركين وتحديث الحالات...' : 'Loading subscribers and updating status...'}</p>
           </div>
         ) : customers.length === 0 ? (
           <div className="p-16 text-center text-slate-500 text-xs border border-dashed border-slate-800 rounded-2xl m-4">
             <AlertTriangle className="w-8 h-8 opacity-25 mb-2 mx-auto" />
-            <p>لم يتم العثور على أي عملاء يطابقون خيارات البحث.</p>
+            <p>{t('noCustomersFound')}</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-right border-collapse text-xs">
+            <table className={`w-full text-xs border-collapse ${language === 'ar' ? 'text-right' : 'text-left'}`}>
               <thead>
                 <tr className="border-b border-slate-800/80 bg-slate-900/10 text-slate-400">
-                  <th className="p-4 font-semibold">المشترك والبرنامج</th>
-                  <th className="p-4 font-semibold">تاريخ البدء</th>
-                  <th className="p-4 font-semibold">تاريخ الانتهاء</th>
-                  <th className="p-4 font-semibold text-center">الحالة</th>
-                  {sessionUser.role === 'ADMIN' && <th className="p-4 font-semibold">الموزع</th>}
-                  <th className="p-4 font-semibold">الملاحظات</th>
-                  <th className="p-4 font-semibold text-left">العمليات</th>
+                  <th className="p-4 font-semibold">{t('tableCustomerName')}</th>
+                  <th className="p-4 font-semibold">{language === 'ar' ? 'تاريخ البدء' : 'Start Date'}</th>
+                  <th className="p-4 font-semibold">{language === 'ar' ? 'تاريخ الانتهاء' : 'Expiry Date'}</th>
+                  <th className="p-4 font-semibold text-center">{t('tableStatus')}</th>
+                  {sessionUser.role === 'ADMIN' && <th className="p-4 font-semibold">{language === 'ar' ? 'الموزع' : 'Seller'}</th>}
+                  <th className="p-4 font-semibold">{t('notes')}</th>
+                  <th className={`p-4 font-semibold ${language === 'ar' ? 'text-left' : 'text-right'}`}>{t('actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -515,26 +551,26 @@ export default function CustomersManager({ sessionUser, sellers }: CustomersMana
                       {/* Name / ID info */}
                       <td className="p-4 font-medium text-slate-100">
                         <div className="font-semibold text-sm">{cust.name}</div>
-                        <div className="text-[10px] text-slate-500 mt-1 space-x-1.5 space-x-reverse">
-                          <span>المعرف: {cust.username}</span>
-                          <span className="text-slate-600">|</span>
-                          <span>القاعدة: {cust.idBase}</span>
+                        <div className="text-[10px] text-slate-500 mt-1 flex items-center gap-1.5 font-mono">
+                          <span>ID: {cust.username}</span>
+                          <span className="text-slate-700">|</span>
+                          <span>Base: {cust.idBase}</span>
                         </div>
                       </td>
 
                       {/* Start Date */}
                       <td className="p-4 text-slate-400">
-                        {new Date(cust.startSubscription).toLocaleDateString('ar-SA')}
+                        {new Date(cust.startSubscription).toLocaleDateString(language === 'ar' ? 'ar-SA' : 'en-US')}
                       </td>
 
                       {/* End Date */}
                       <td className="p-4">
                         <span className="text-slate-300">
-                          {new Date(cust.endSubscription).toLocaleDateString('ar-SA')}
+                          {new Date(cust.endSubscription).toLocaleDateString(language === 'ar' ? 'ar-SA' : 'en-US')}
                         </span>
                         {cust.status === 'ACTIVE' && diffDays > 0 && (
                           <span className="block text-[10px] text-slate-500 mt-0.5">
-                            متبقي: {diffDays} أيام
+                            {language === 'ar' ? `متبقي: ${diffDays} يوم` : `${diffDays} days left`}
                           </span>
                         )}
                       </td>
@@ -544,20 +580,20 @@ export default function CustomersManager({ sessionUser, sellers }: CustomersMana
                         {cust.status === 'ACTIVE' ? (
                           isExpiringSoon ? (
                             <span className="bg-amber-500/10 text-amber-500 border border-amber-500/25 px-2.5 py-0.5 rounded-full text-[10px] font-bold animate-pulse inline-block">
-                              ينتهي قريباً
+                              {language === 'ar' ? 'ينتهي قريباً' : 'Expiring Soon'}
                             </span>
                           ) : (
                             <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/25 px-2.5 py-0.5 rounded-full text-[10px] font-bold inline-block">
-                              نشط
+                              {t('activeStatus')}
                             </span>
                           )
                         ) : cust.status === 'SUSPENDED' ? (
                           <span className="bg-amber-600/15 text-amber-500 border border-amber-500/20 px-2.5 py-0.5 rounded-full text-[10px] font-bold inline-block">
-                            معلق
+                            {t('suspendedStatus')}
                           </span>
                         ) : (
                           <span className="bg-red-500/10 text-red-400 border border-red-500/25 px-2.5 py-0.5 rounded-full text-[10px] font-bold inline-block">
-                            منتهي
+                            {t('expiredStatus')}
                           </span>
                         )}
                       </td>
@@ -565,7 +601,7 @@ export default function CustomersManager({ sessionUser, sellers }: CustomersMana
                       {/* Seller (Admin only) */}
                       {sessionUser.role === 'ADMIN' && (
                         <td className="p-4 text-slate-400">
-                          {cust.seller?.name || 'موزع محذوف'}
+                          {cust.seller?.name || 'Deleted seller'}
                         </td>
                       )}
 
@@ -575,13 +611,13 @@ export default function CustomersManager({ sessionUser, sellers }: CustomersMana
                       </td>
 
                       {/* Action buttons */}
-                      <td className="p-4 text-left">
+                      <td className={`p-4 ${language === 'ar' ? 'text-left' : 'text-right'}`}>
                         <div className="inline-flex items-center gap-1.5" dir="ltr">
                           {/* Log check */}
                           <button
                             onClick={() => viewLogs(cust)}
                             className="p-2 bg-[#121829] hover:bg-[#182035] text-slate-400 hover:text-slate-200 border border-slate-800 rounded-lg transition cursor-pointer"
-                            title="عرض سجل الدخول"
+                            title={language === 'ar' ? 'عرض سجل الدخول' : 'View Access Logs'}
                           >
                             <History className="w-4 h-4" />
                           </button>
@@ -596,45 +632,50 @@ export default function CustomersManager({ sessionUser, sellers }: CustomersMana
                               setEditModalOpen(true);
                             }}
                             className="p-2 bg-[#121829] hover:bg-[#182035] text-slate-400 hover:text-indigo-400 border border-slate-800 rounded-lg transition cursor-pointer"
-                            title="تعديل البيانات"
+                            title={language === 'ar' ? 'تعديل البيانات' : 'Edit Info'}
                           >
                             <Edit className="w-4 h-4" />
                           </button>
 
-                          {/* Toggles Status Suspend / Activate */}
-                          {cust.status === 'ACTIVE' ? (
+                          {/* Suspend action */}
+                          {cust.status === 'ACTIVE' && (
                             <button
                               onClick={() => {
                                 setSelectedCust(cust);
                                 setSuspendModalOpen(true);
                               }}
                               className="p-2 bg-amber-500/5 hover:bg-amber-500/10 text-amber-500 border border-amber-500/20 rounded-lg transition cursor-pointer"
-                              title="إيقاف / تعليق الاشتراك"
+                              title={t('suspendBtn')}
                             >
                               <Pause className="w-4 h-4" />
                             </button>
-                          ) : (
-                            <button
-                              onClick={() => {
-                                setSelectedCust(cust);
-                                setRenewDuration(cust.status === 'SUSPENDED' ? '1 month' : '1 month');
-                                setRenewModalOpen(true);
-                              }}
-                              className="p-2 bg-emerald-500/5 hover:bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg transition cursor-pointer"
-                              title="تجديد / تفعيل الاشتراك"
-                            >
-                              <Play className="w-4 h-4" />
-                            </button>
                           )}
 
-                          {/* Delete customer */}
+                          {/* Renew / Reactivate */}
                           <button
-                            onClick={() => handleDeleteCustomer(cust)}
-                            className="p-2 bg-red-500/5 hover:bg-red-500/10 text-red-400 border border-red-500/20 rounded-lg transition cursor-pointer"
-                            title="حذف نهائي"
+                            onClick={() => {
+                              setSelectedCust(cust);
+                              // set default prefill based on allowed prices or plan values
+                              const firstDuration = availableDurations[0]?.value || '1 month';
+                              setRenewDuration(firstDuration);
+                              setRenewModalOpen(true);
+                            }}
+                            className="p-2 bg-emerald-500/5 hover:bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg transition cursor-pointer"
+                            title={cust.status === 'SUSPENDED' ? t('activateBtn') : t('renewBtn')}
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Play className="w-4 h-4" />
                           </button>
+
+                          {/* Delete permanently (Admin Only) */}
+                          {sessionUser.role === 'ADMIN' && (
+                            <button
+                              onClick={() => handleDeleteCustomer(cust)}
+                              className="p-2 bg-red-500/5 hover:bg-red-500/10 text-red-400 border border-red-500/20 rounded-lg transition cursor-pointer"
+                              title={language === 'ar' ? 'حذف نهائياً' : 'Delete Permanently'}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -646,32 +687,36 @@ export default function CustomersManager({ sessionUser, sellers }: CustomersMana
         )}
       </div>
 
-      {/* MODAL 1: ADD CUSTOMER POPUP */}
+      {/* MODAL 1: ADD NEW CUSTOMER */}
       {addModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setAddModalOpen(false)} />
-          
-          <div className="w-full max-w-xl bg-[#0d1322] border border-slate-800 rounded-2xl p-6 md:p-8 z-10 overflow-y-auto max-h-[90vh] glow-primary">
+
+          <div className={`w-full max-w-xl bg-[#0d1322] border border-slate-800 rounded-2xl p-6 z-10 glow-primary ${
+            language === 'ar' ? 'text-right' : 'text-left'
+          }`}>
             <div className="flex items-center justify-between border-b border-slate-900 pb-4 mb-6">
               <h3 className="font-bold text-slate-100 text-lg flex items-center gap-2">
                 <UserPlus className="w-5 h-5 text-indigo-400" />
-                تفعيل مشترك جديد في النظام
+                {t('addCustomerBtn')}
               </h3>
               <button onClick={() => setAddModalOpen(false)} className="text-slate-500 hover:text-slate-300 cursor-pointer">
                 <X className="w-6 h-6" />
               </button>
             </div>
 
-            <form onSubmit={handleAddCustomer} className="space-y-4 text-right">
+            <form onSubmit={handleAddCustomer} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Customer Name */}
+                {/* Subscriber Name */}
                 <div>
-                  <label className="block text-slate-300 text-xs font-semibold mb-2">اسم العميل الكامل</label>
+                  <label className="block text-slate-350 text-xs font-semibold mb-2">{t('customerName')} *</label>
                   <input
                     type="text"
                     required
-                    placeholder="مثال: خالد محمد الحربي"
-                    className="w-full bg-[#070b13] border border-slate-800 rounded-xl py-3 px-4 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 text-right"
+                    placeholder={language === 'ar' ? 'الاسم الكامل للمشترك' : 'Subscriber full name'}
+                    className={`w-full bg-[#070b13] border border-slate-850 rounded-xl py-3 px-4 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 ${
+                      language === 'ar' ? 'text-right' : 'text-left'
+                    }`}
                     value={newName}
                     onChange={(e) => setNewName(e.target.value)}
                   />
@@ -679,12 +724,14 @@ export default function CustomersManager({ sessionUser, sellers }: CustomersMana
 
                 {/* Base ID */}
                 <div>
-                  <label className="block text-slate-300 text-xs font-semibold mb-2">معرف القاعدة (Base ID)</label>
+                  <label className="block text-slate-350 text-xs font-semibold mb-2">{t('baseId')} *</label>
                   <input
                     type="text"
                     required
-                    placeholder="مثال: base_900"
-                    className="w-full bg-[#070b13] border border-slate-800 rounded-xl py-3 px-4 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 text-right text-ltr"
+                    placeholder="e.g. base_101"
+                    className={`w-full bg-[#070b13] border border-slate-850 rounded-xl py-3 px-4 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 font-mono ${
+                      language === 'ar' ? 'text-right text-ltr' : 'text-left text-ltr'
+                    }`}
                     value={newIdBase}
                     onChange={(e) => setNewIdBase(e.target.value)}
                   />
@@ -692,14 +739,16 @@ export default function CustomersManager({ sessionUser, sellers }: CustomersMana
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Username */}
+                {/* Subscription Username */}
                 <div>
-                  <label className="block text-slate-300 text-xs font-semibold mb-2">اسم المستخدم للاشتراك (مفتوح بالإنكليزية)</label>
+                  <label className="block text-slate-350 text-xs font-semibold mb-2">{t('subscriptionUsername')} *</label>
                   <input
                     type="text"
                     required
-                    placeholder="مثال: khaled_90"
-                    className="w-full bg-[#070b13] border border-slate-800 rounded-xl py-3 px-4 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 text-right text-ltr"
+                    placeholder="e.g. user_account"
+                    className={`w-full bg-[#070b13] border border-slate-850 rounded-xl py-3 px-4 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 font-mono ${
+                      language === 'ar' ? 'text-right text-ltr' : 'text-left text-ltr'
+                    }`}
                     value={newUsername}
                     onChange={(e) => setNewUsername(e.target.value)}
                   />
@@ -707,9 +756,11 @@ export default function CustomersManager({ sessionUser, sellers }: CustomersMana
 
                 {/* Duration */}
                 <div>
-                  <label className="block text-slate-300 text-xs font-semibold mb-2">مدة التفعيل</label>
+                  <label className="block text-slate-350 text-xs font-semibold mb-2">{t('duration')} *</label>
                   <select
-                    className="w-full bg-[#070b13] border border-slate-800 rounded-xl py-3 px-4 text-xs text-slate-300 focus:outline-none focus:border-indigo-500 text-right cursor-pointer"
+                    className={`w-full bg-[#070b13] border border-slate-850 rounded-xl py-3 px-4 text-xs text-slate-300 focus:outline-none focus:border-indigo-500 cursor-pointer ${
+                      language === 'ar' ? 'text-right' : 'text-left'
+                    }`}
                     value={newDuration}
                     onChange={(e) => setNewDuration(e.target.value)}
                   >
@@ -723,66 +774,70 @@ export default function CustomersManager({ sessionUser, sellers }: CustomersMana
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Amount Paid */}
+                {/* Price Amount */}
                 <div>
-                  <label className="block text-slate-300 text-xs font-semibold mb-2">المبلغ المستلم (ر.س)</label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-500 text-xs">
-                      ر.س
-                    </div>
-                    <input
-                      type="number"
-                      required
-                      min={0}
-                      className="w-full bg-[#070b13] border border-slate-800 rounded-xl py-3 pr-4 pl-12 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 text-right font-bold"
-                      value={newAmount}
-                      onChange={(e) => setNewAmount(parseFloat(e.target.value) || 0)}
-                    />
-                  </div>
+                  <label className="block text-slate-350 text-xs font-semibold mb-2">
+                    {language === 'ar' ? 'المبلغ المحصل (ر.س)' : 'Collected Amount (SAR)'} *
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min={0}
+                    className={`w-full bg-[#070b13] border border-slate-850 rounded-xl py-3 px-4 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 font-bold ${
+                      language === 'ar' ? 'text-right' : 'text-left'
+                    }`}
+                    value={newAmount}
+                    onChange={(e) => setNewAmount(parseFloat(e.target.value) || 0)}
+                  />
                 </div>
 
                 {/* Payment Method */}
                 <div>
-                  <label className="block text-slate-300 text-xs font-semibold mb-2">طريقة الدفع</label>
+                  <label className="block text-slate-350 text-xs font-semibold mb-2">{t('paymentMethod')} *</label>
                   <select
-                    className="w-full bg-[#070b13] border border-slate-800 rounded-xl py-3 px-4 text-xs text-slate-300 focus:outline-none focus:border-indigo-500 text-right cursor-pointer"
+                    className={`w-full bg-[#070b13] border border-slate-850 rounded-xl py-3 px-4 text-xs text-slate-300 focus:outline-none focus:border-indigo-500 cursor-pointer ${
+                      language === 'ar' ? 'text-right' : 'text-left'
+                    }`}
                     value={newPaymentMethod}
                     onChange={(e) => setNewPaymentMethod(e.target.value)}
                   >
-                    <option value="TRANSFER">حوالة بنكية</option>
-                    <option value="CASH">دفع نقدي</option>
-                    <option value="USDT">عملة رقمية USDT</option>
+                    <option value="TRANSFER">{t('paymentMethodTransfer')}</option>
+                    <option value="CASH">{t('paymentMethodCash')}</option>
+                    <option value="USDT">{t('paymentMethodUsdt')}</option>
                   </select>
                 </div>
               </div>
 
               {/* Notes */}
               <div>
-                <label className="block text-slate-300 text-xs font-semibold mb-2">ملاحظات تفعيل الاشتراك</label>
+                <label className="block text-slate-350 text-xs font-semibold mb-2">{t('notes')}</label>
                 <textarea
-                  placeholder="ملاحظات حول طريقة الدفع أو التفعيل الفوري..."
+                  placeholder={t('notesPlaceholder')}
                   rows={2}
-                  className="w-full bg-[#070b13] border border-slate-800 rounded-xl py-3 px-4 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 text-right resize-none"
+                  className={`w-full bg-[#070b13] border border-slate-850 rounded-xl py-3 px-4 text-xs text-slate-200 placeholder-slate-650 focus:outline-none focus:border-indigo-500 resize-none ${
+                    language === 'ar' ? 'text-right' : 'text-left'
+                  }`}
                   value={newNotes}
                   onChange={(e) => setNewNotes(e.target.value)}
                 />
               </div>
 
-              <div className="pt-4 border-t border-slate-900 flex items-center justify-end gap-3" dir="ltr">
+              <div className={`pt-4 border-t border-slate-900 flex items-center justify-end gap-3 ${
+                language === 'ar' ? 'flex-row' : 'flex-row-reverse'
+              }`}>
                 <button
                   type="button"
                   onClick={() => setAddModalOpen(false)}
                   className="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs py-2.5 px-4 rounded-xl cursor-pointer"
                 >
-                  إلغاء
+                  {t('cancel')}
                 </button>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold py-2.5 px-5 rounded-xl transition cursor-pointer flex items-center gap-2"
+                  className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold py-2.5 px-5 rounded-xl transition cursor-pointer"
                 >
-                  <CheckCircle className="w-4 h-4" />
-                  <span>تأكيد التفعيل والخصم</span>
+                  {t('save')}
                 </button>
               </div>
             </form>
@@ -790,16 +845,18 @@ export default function CustomersManager({ sessionUser, sellers }: CustomersMana
         </div>
       )}
 
-      {/* MODAL 2: RENEW CUSTOMER POPUP */}
+      {/* MODAL 2: RENEW SUBSCRIPTION */}
       {renewModalOpen && selectedCust && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setRenewModalOpen(false)} />
 
-          <div className="w-full max-w-lg bg-[#0d1322] border border-slate-800 rounded-2xl p-6 z-10 glow-primary text-right">
+          <div className={`w-full max-w-lg bg-[#0d1322] border border-slate-800 rounded-2xl p-6 z-10 glow-primary ${
+            language === 'ar' ? 'text-right' : 'text-left'
+          }`}>
             <div className="flex items-center justify-between border-b border-slate-900 pb-4 mb-6">
               <h3 className="font-bold text-slate-100 text-lg flex items-center gap-2">
-                <RotateCw className="w-5 h-5 text-emerald-400" />
-                تجديد اشتراك العميل: {selectedCust.name}
+                <CreditCard className="w-5 h-5 text-indigo-400" />
+                {t('renewDialogTitle')} ({selectedCust.name})
               </h3>
               <button onClick={() => setRenewModalOpen(false)} className="text-slate-500 hover:text-slate-300 cursor-pointer">
                 <X className="w-6 h-6" />
@@ -808,11 +865,13 @@ export default function CustomersManager({ sessionUser, sellers }: CustomersMana
 
             <form onSubmit={handleRenewCustomer} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Renewal Duration */}
+                {/* Duration */}
                 <div>
-                  <label className="block text-slate-300 text-xs font-semibold mb-2">الباقة المطلوبة</label>
+                  <label className="block text-slate-350 text-xs font-semibold mb-2">{t('duration')} *</label>
                   <select
-                    className="w-full bg-[#070b13] border border-slate-800 rounded-xl py-3 px-4 text-xs text-slate-300 focus:outline-none focus:border-indigo-500 text-right cursor-pointer"
+                    className={`w-full bg-[#070b13] border border-slate-850 rounded-xl py-3 px-4 text-xs text-slate-300 focus:outline-none focus:border-indigo-500 cursor-pointer ${
+                      language === 'ar' ? 'text-right' : 'text-left'
+                    }`}
                     value={renewDuration}
                     onChange={(e) => setRenewDuration(e.target.value)}
                   >
@@ -824,14 +883,18 @@ export default function CustomersManager({ sessionUser, sellers }: CustomersMana
                   </select>
                 </div>
 
-                {/* Amount Paid */}
+                {/* Amount */}
                 <div>
-                  <label className="block text-slate-300 text-xs font-semibold mb-2">المبلغ المستلم للتجديد</label>
+                  <label className="block text-slate-350 text-xs font-semibold mb-2">
+                    {language === 'ar' ? 'المبلغ المحصل للتجديد (ر.س)' : 'Collected Renewal Amount (SAR)'} *
+                  </label>
                   <input
                     type="number"
                     required
                     min={0}
-                    className="w-full bg-[#070b13] border border-slate-800 rounded-xl py-3 px-4 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 text-right font-bold"
+                    className={`w-full bg-[#070b13] border border-slate-850 rounded-xl py-3 px-4 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 font-bold ${
+                      language === 'ar' ? 'text-right' : 'text-left'
+                    }`}
                     value={renewAmount}
                     onChange={(e) => setRenewAmount(parseFloat(e.target.value) || 0)}
                   />
@@ -840,45 +903,50 @@ export default function CustomersManager({ sessionUser, sellers }: CustomersMana
 
               {/* Payment Method */}
               <div>
-                <label className="block text-slate-300 text-xs font-semibold mb-2">طريقة دفع التجديد</label>
+                <label className="block text-slate-350 text-xs font-semibold mb-2">{t('paymentMethod')} *</label>
                 <select
-                  className="w-full bg-[#070b13] border border-slate-800 rounded-xl py-3 px-4 text-xs text-slate-300 focus:outline-none focus:border-indigo-500 text-right cursor-pointer"
+                  className={`w-full bg-[#070b13] border border-slate-850 rounded-xl py-3 px-4 text-xs text-slate-300 focus:outline-none focus:border-indigo-500 cursor-pointer ${
+                    language === 'ar' ? 'text-right' : 'text-left'
+                  }`}
                   value={renewPaymentMethod}
                   onChange={(e) => setRenewPaymentMethod(e.target.value)}
                 >
-                  <option value="TRANSFER">حوالة بنكية</option>
-                  <option value="CASH">دفع نقدي</option>
-                  <option value="USDT">عملة رقمية USDT</option>
+                  <option value="TRANSFER">{t('paymentMethodTransfer')}</option>
+                  <option value="CASH">{t('paymentMethodCash')}</option>
+                  <option value="USDT">{t('paymentMethodUsdt')}</option>
                 </select>
               </div>
 
               {/* Notes */}
               <div>
-                <label className="block text-slate-300 text-xs font-semibold mb-2">ملاحظات التجديد</label>
+                <label className="block text-slate-355 text-xs font-semibold mb-2">{t('notes')}</label>
                 <textarea
-                  placeholder="رقم الحوالة البنكية أو ملاحظات إضافية حول التجديد..."
+                  placeholder={language === 'ar' ? 'ملاحظات إضافية حول التجديد والتحصيل...' : 'Additional notes about renewal and collection...'}
                   rows={2}
-                  className="w-full bg-[#070b13] border border-slate-800 rounded-xl py-3 px-4 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 text-right resize-none"
+                  className={`w-full bg-[#070b13] border border-slate-850 rounded-xl py-3 px-4 text-xs text-slate-200 placeholder-slate-650 focus:outline-none focus:border-indigo-500 resize-none ${
+                    language === 'ar' ? 'text-right' : 'text-left'
+                  }`}
                   value={renewNotes}
                   onChange={(e) => setRenewNotes(e.target.value)}
                 />
               </div>
 
-              <div className="pt-4 border-t border-slate-900 flex items-center justify-end gap-3" dir="ltr">
+              <div className={`pt-4 border-t border-slate-900 flex items-center justify-end gap-3 ${
+                language === 'ar' ? 'flex-row' : 'flex-row-reverse'
+              }`}>
                 <button
                   type="button"
                   onClick={() => setRenewModalOpen(false)}
                   className="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs py-2.5 px-4 rounded-xl cursor-pointer"
                 >
-                  إلغاء
+                  {t('cancel')}
                 </button>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold py-2.5 px-5 rounded-xl transition cursor-pointer flex items-center gap-2 shadow-emerald-950/20 shadow-md"
+                  className="bg-indigo-650 hover:bg-indigo-550 text-white text-xs font-semibold py-2.5 px-5 rounded-xl transition cursor-pointer"
                 >
-                  <CheckCircle className="w-4 h-4" />
-                  <span>تأكيد التجديد وتمديد الصلاحية</span>
+                  {t('confirmRenew')}
                 </button>
               </div>
             </form>
@@ -886,34 +954,46 @@ export default function CustomersManager({ sessionUser, sellers }: CustomersMana
         </div>
       )}
 
-      {/* MODAL 3: SUSPEND CUSTOMER POPUP */}
+      {/* MODAL 3: SUSPEND CONFIRMATION */}
       {suspendModalOpen && selectedCust && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setSuspendModalOpen(false)} />
 
-          <div className="w-full max-w-md bg-[#0d1322] border border-slate-800 rounded-2xl p-6 z-10 text-right">
-            <h3 className="font-bold text-slate-100 text-base mb-3 text-amber-500 flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5" />
-              تأكيد تعليق حساب المشترك: {selectedCust.name}
-            </h3>
+          <div className={`w-full max-w-md bg-[#0d1322] border border-slate-800 rounded-2xl p-6 z-10 glow-primary ${
+            language === 'ar' ? 'text-right' : 'text-left'
+          }`}>
+            <div className="flex items-center justify-between border-b border-slate-900 pb-4 mb-4">
+              <h3 className="font-bold text-slate-100 text-lg flex items-center gap-2 text-amber-500">
+                <AlertTriangle className="w-5 h-5 animate-pulse" />
+                {t('suspendDialogTitle')}
+              </h3>
+              <button onClick={() => setSuspendModalOpen(false)} className="text-slate-500 hover:text-slate-300 cursor-pointer">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
             <p className="text-slate-400 text-xs leading-relaxed mb-6">
-              {"سيتم إرسال طلب إيقاف/حذف فوري للنظام الخارجي API. سيؤدي هذا إلى قطع الخدمة عن المشترك فوراً وحظر اتصاله بالبرنامج، كما ستتغير حالته في النظام إلى 'معلق'. هل تود المتابعة؟"}
+              {language === 'ar' 
+                ? 'سيتم إرسال طلب إيقاف/حظر فوري للنظام الخارجي API. سيؤدي هذا إلى قطع الخدمة عن المشترك فوراً وحظر اتصاله بالبرنامج، كما ستتغير حالته في النظام إلى "معلق". هل تود المتابعة؟'
+                : 'An immediate suspension/block request will be dispatched to the external API. This will instantly disconnect the user and block their access to the software. Their local system status will change to "Suspended". Do you wish to proceed?'}
             </p>
 
-            <div className="flex items-center justify-end gap-3" dir="ltr">
+            <div className={`flex items-center justify-end gap-3 ${
+              language === 'ar' ? 'flex-row' : 'flex-row-reverse'
+            }`}>
               <button
                 type="button"
                 onClick={() => setSuspendModalOpen(false)}
                 className="bg-[#121829] hover:bg-[#182035] text-slate-400 hover:text-slate-200 border border-slate-850 py-2.5 px-4 rounded-xl cursor-pointer text-xs"
               >
-                تراجع
+                {language === 'ar' ? 'تراجع' : 'Cancel'}
               </button>
               <button
                 onClick={handleSuspendCustomer}
                 disabled={loading}
                 className="bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold py-2.5 px-5 rounded-xl transition cursor-pointer"
               >
-                نعم، إيقاف الخدمة فوراً
+                {t('confirmSuspend')}
               </button>
             </div>
           </div>
@@ -925,11 +1005,13 @@ export default function CustomersManager({ sessionUser, sellers }: CustomersMana
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setEditModalOpen(false)} />
 
-          <div className="w-full max-w-lg bg-[#0d1322] border border-slate-800 rounded-2xl p-6 z-10 text-right glow-primary">
+          <div className={`w-full max-w-lg bg-[#0d1322] border border-slate-800 rounded-2xl p-6 z-10 glow-primary ${
+            language === 'ar' ? 'text-right' : 'text-left'
+          }`}>
             <div className="flex items-center justify-between border-b border-slate-900 pb-4 mb-6">
               <h3 className="font-bold text-slate-100 text-lg flex items-center gap-2">
                 <Edit className="w-5 h-5 text-indigo-400" />
-                تعديل بيانات العميل: {selectedCust.name}
+                {language === 'ar' ? `تعديل بيانات العميل: ${selectedCust.name}` : `Edit Customer Details: ${selectedCust.name}`}
               </h3>
               <button onClick={() => setEditModalOpen(false)} className="text-slate-500 hover:text-slate-300 cursor-pointer">
                 <X className="w-6 h-6" />
@@ -938,11 +1020,13 @@ export default function CustomersManager({ sessionUser, sellers }: CustomersMana
 
             <form onSubmit={handleEditCustomer} className="space-y-4">
               <div>
-                <label className="block text-slate-300 text-xs font-semibold mb-2">الاسم الكامل للعميل</label>
+                <label className="block text-slate-300 text-xs font-semibold mb-2">{t('customerName')}</label>
                 <input
                   type="text"
                   required
-                  className="w-full bg-[#070b13] border border-slate-800 rounded-xl py-3 px-4 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 text-right"
+                  className={`w-full bg-[#070b13] border border-slate-800 rounded-xl py-3 px-4 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 ${
+                    language === 'ar' ? 'text-right' : 'text-left'
+                  }`}
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
                 />
@@ -950,9 +1034,11 @@ export default function CustomersManager({ sessionUser, sellers }: CustomersMana
 
               {sessionUser.role === 'ADMIN' && (
                 <div>
-                  <label className="block text-slate-300 text-xs font-semibold mb-2">الموزع المسؤول</label>
+                  <label className="block text-slate-300 text-xs font-semibold mb-2">{language === 'ar' ? 'الموزع المسؤول' : 'Responsible Seller'}</label>
                   <select
-                    className="w-full bg-[#070b13] border border-slate-800 rounded-xl py-3 px-4 text-xs text-slate-300 focus:outline-none focus:border-indigo-500 text-right cursor-pointer"
+                    className={`w-full bg-[#070b13] border border-slate-800 rounded-xl py-3 px-4 text-xs text-slate-300 focus:outline-none focus:border-indigo-500 cursor-pointer ${
+                      language === 'ar' ? 'text-right' : 'text-left'
+                    }`}
                     value={editSellerId}
                     onChange={(e) => setEditSellerId(e.target.value)}
                   >
@@ -966,29 +1052,33 @@ export default function CustomersManager({ sessionUser, sellers }: CustomersMana
               )}
 
               <div>
-                <label className="block text-slate-300 text-xs font-semibold mb-2">ملاحظات</label>
+                <label className="block text-slate-300 text-xs font-semibold mb-2">{t('notes')}</label>
                 <textarea
                   rows={3}
-                  className="w-full bg-[#070b13] border border-slate-800 rounded-xl py-3 px-4 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 text-right resize-none"
+                  className={`w-full bg-[#070b13] border border-slate-800 rounded-xl py-3 px-4 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 resize-none ${
+                    language === 'ar' ? 'text-right' : 'text-left'
+                  }`}
                   value={editNotes}
                   onChange={(e) => setEditNotes(e.target.value)}
                 />
               </div>
 
-              <div className="pt-4 border-t border-slate-900 flex items-center justify-end gap-3" dir="ltr">
+              <div className={`pt-4 border-t border-slate-900 flex items-center justify-end gap-3 ${
+                language === 'ar' ? 'flex-row' : 'flex-row-reverse'
+              }`}>
                 <button
                   type="button"
                   onClick={() => setEditModalOpen(false)}
                   className="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs py-2.5 px-4 rounded-xl cursor-pointer"
                 >
-                  إلغاء
+                  {t('cancel')}
                 </button>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold py-2.5 px-5 rounded-xl transition cursor-pointer"
+                  className="bg-indigo-650 hover:bg-indigo-550 text-white text-xs font-semibold py-2.5 px-5 rounded-xl transition cursor-pointer"
                 >
-                  حفظ التعديلات
+                  {language === 'ar' ? 'حفظ التعديلات' : 'Save Changes'}
                 </button>
               </div>
             </form>
@@ -1001,11 +1091,13 @@ export default function CustomersManager({ sessionUser, sellers }: CustomersMana
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setLogsModalOpen(false)} />
 
-          <div className="w-full max-w-2xl bg-[#0d1322] border border-slate-800 rounded-2xl p-6 z-10 text-right glow-primary overflow-hidden">
+          <div className={`w-full max-w-2xl bg-[#0d1322] border border-slate-800 rounded-2xl p-6 z-10 glow-primary overflow-hidden ${
+            language === 'ar' ? 'text-right' : 'text-left'
+          }`}>
             <div className="flex items-center justify-between border-b border-slate-900 pb-4 mb-6">
               <h3 className="font-bold text-slate-100 text-lg flex items-center gap-2">
                 <History className="w-5 h-5 text-indigo-400" />
-                سجل نشاط ودخول المشترك: {selectedCust.name}
+                {language === 'ar' ? `سجل نشاط ودخول المشترك: ${selectedCust.name}` : `Access logs for subscriber: ${selectedCust.name}`}
               </h3>
               <button onClick={() => setLogsModalOpen(false)} className="text-slate-500 hover:text-slate-300 cursor-pointer">
                 <X className="w-6 h-6" />
@@ -1015,44 +1107,44 @@ export default function CustomersManager({ sessionUser, sellers }: CustomersMana
             {logsLoading ? (
               <div className="p-16 text-center text-slate-500 text-xs">
                 <span className="w-6 h-6 border-2 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin inline-block mb-3" />
-                <p>جاري تحميل السجلات من API...</p>
+                <p>{language === 'ar' ? 'جاري تحميل السجلات من API...' : 'Loading logs from API...'}</p>
               </div>
             ) : customerLogs.length === 0 ? (
               <div className="p-12 text-center text-slate-500 text-xs border border-dashed border-slate-800 rounded-xl">
-                لم يتم تسجيل أي عمليات دخول سابقة لهذا المشترك في قاعدة الـ API.
+                {language === 'ar' 
+                  ? 'لم يتم تسجيل أي عمليات دخول سابقة لهذا المشترك في قاعدة الـ API.' 
+                  : 'No previous access log entries recorded for this subscriber in the API database.'}
               </div>
             ) : (
               <div className="overflow-y-auto max-h-[350px]">
-                <table className="w-full text-right border-collapse text-xs">
+                <table className={`w-full text-xs border-collapse ${language === 'ar' ? 'text-right' : 'text-left'}`}>
                   <thead>
                     <tr className="border-b border-slate-800/80 text-slate-400 bg-slate-900/10">
-                      <th className="p-3 font-semibold">تاريخ وقت الدخول</th>
-                      <th className="p-3 font-semibold">عنوان الـ IP</th>
-                      <th className="p-3 font-semibold text-center">مدة الاتصال</th>
+                      <th className="p-3 font-semibold">{t('tableLogDate')}</th>
+                      <th className="p-3 font-semibold">{language === 'ar' ? 'عنوان الـ IP' : 'IP Address'}</th>
+                      <th className="p-3 font-semibold text-center">{language === 'ar' ? 'مدة الاتصال' : 'Connection Duration'}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {customerLogs.map((log, index) => {
-                      // Check for unrecognized IP flag (e.g. not matching local subnet or first time)
-                      // Highlight IPs starting with unrecognized classes for demonstration
                       const isUnusualIp = log.ip.startsWith('82.') || log.ip.startsWith('5.');
                       return (
                         <tr key={index} className="border-b border-slate-900/40 hover:bg-slate-800/10">
                           <td className="p-3 text-slate-300">
-                            {new Date(log.login_time).toLocaleString('ar-SA')}
+                            {new Date(log.login_time).toLocaleString(language === 'ar' ? 'ar-SA' : 'en-US')}
                           </td>
                           <td className="p-3">
                             <span className={isUnusualIp ? 'text-amber-500 font-semibold' : 'text-slate-400'}>
                               {log.ip}
                             </span>
                             {isUnusualIp && (
-                              <span className="bg-amber-500/10 text-amber-500 text-[9px] px-1.5 py-0.5 rounded border border-amber-500/20 mr-2 inline-block">
-                                IP خارجي مشبوه
+                              <span className="bg-amber-500/10 text-amber-500 text-[9px] px-1.5 py-0.5 rounded border border-amber-500/20 mx-2 inline-block">
+                                {language === 'ar' ? 'IP خارجي مشبوه' : 'Suspicious External IP'}
                               </span>
                             )}
                           </td>
                           <td className="p-3 text-center text-slate-400">
-                            {(log.duration_seconds / 60).toFixed(0)} دقيقة
+                            {formatNum(Math.round(log.duration_seconds / 60))} {language === 'ar' ? 'دقيقة' : 'minutes'}
                           </td>
                         </tr>
                       );
@@ -1062,13 +1154,13 @@ export default function CustomersManager({ sessionUser, sellers }: CustomersMana
               </div>
             )}
 
-            <div className="pt-4 border-t border-slate-900 mt-6 flex justify-end">
+            <div className={`pt-4 border-t border-slate-900 mt-6 flex ${language === 'ar' ? 'justify-end' : 'justify-end'}`}>
               <button
                 type="button"
                 onClick={() => setLogsModalOpen(false)}
                 className="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs py-2 px-4 rounded-xl cursor-pointer"
               >
-                إغلاق النافذة
+                {language === 'ar' ? 'إغلاق النافذة' : 'Close Window'}
               </button>
             </div>
           </div>

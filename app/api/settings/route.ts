@@ -12,7 +12,7 @@ export async function GET() {
       return NextResponse.json({ error: 'غير مصرح به' }, { status: 401 });
     }
 
-    const settings = getSystemSettings();
+    const settings = await getSystemSettings();
 
     // Mask the API Key to prevent leakage
     const apiKey = settings.api.apiKey;
@@ -44,7 +44,7 @@ export async function PUT(req: NextRequest) {
     }
 
     const body = await req.json();
-    const currentSettings = getSystemSettings();
+    const currentSettings = await getSystemSettings();
 
     // Parse values from body
     const { api, pricePlans, expiryThresholdDays } = body;
@@ -85,9 +85,9 @@ export async function PUT(req: NextRequest) {
       },
     });
 
-    const success = saveSystemSettings(updatedSettings);
+    const success = await saveSystemSettings(updatedSettings);
     if (!success) {
-      throw new Error('Could not save system settings to file');
+      throw new Error('Could not save system settings to database');
     }
 
     return NextResponse.json({ success: true });
